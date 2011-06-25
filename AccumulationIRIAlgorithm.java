@@ -48,6 +48,7 @@ import es.unex.sextante.gui.modeler.ModelAlgorithmIO;
 import es.unex.sextante.gui.settings.SextanteModelerSettings;
 import es.unex.sextante.hydrology.channelNetwork.ChannelNetworkAlgorithm;
 import es.unex.sextante.outputs.FileOutputChannel;
+import es.unex.sextante.outputs.Output;
 import es.unex.sextante.parameters.Parameter;
 import es.unex.sextante.rasterize.rasterizeVectorLayer.RasterizeVectorLayerAlgorithm;
 import es.unex.sextante.vectorTools.autoincrementValue.AutoincrementValueAlgorithm;
@@ -618,13 +619,17 @@ GeoAlgorithm {
 	    //TODO Here we would like to create a new layer calling...
 	    //resultNet_Points3 = getFirstFeatures(resultNet_Points2, num_points);
 
+	    resultNet_Points2.open();
+	    System.out.println("-------------------------resultNet_Points2.count(): " + resultNet_Points2.getShapesCount());
+	    resultNet_Points2.close();
+
 	    resultNet_Points2.addFilter(new FirstFeaturesVectorFilter(num_points));
 
 	    // Set the layer used after
 	    network_lyr = resultNet_Points2;
 
 	    network_lyr.open();
-	    System.out.println("-------------------------network_lyr - " + network_lyr.getShapesCount());
+	    System.out.println("-------------------------network_lyr.count(): " + network_lyr.getShapesCount());
 	    network_lyr.close();
 
 	}
@@ -640,33 +645,13 @@ GeoAlgorithm {
 	// COASTAL RINGS
 
 	// See if the waste_water_spill affects a coastal sector
+
 	network_lyr.open();
 
 	int num_points_network = network_lyr.getShapesCount();
 	if (num_points_network > 0 && num_points_network <= num_points ) {
 	    System.out.println("-------------------------- COASTAL RINGS ARE NECESSARY -------------------------- "
 		    +  num_points_network);
-
-	    //	    // Create a layer with the last point of the network
-	    //	    final IFeature lastPto = getLastFeature(network_lyr);
-	    //	    final IVectorLayer lastNetwork = m_OutputFactory.getNewVectorLayer("lastPointLyr", IVectorLayer.SHAPE_TYPE_POINT,
-	    //		    network_lyr.getFieldTypes(), network_lyr.getFieldNames(), new FileOutputChannel(
-	    //			    m_OutputFactory.getTempVectorLayerFilename()), network_lyr.getCRS());
-	    //	    lastNetwork.open();
-	    //	    lastNetwork.addFeature(lastPto);
-	    //	    lastNetwork.close();
-	    //	    //SIEMPRE HAY QUE HACER POSTPROCESS
-	    //	    try {
-	    //		lastNetwork.postProcess();
-	    //	    }
-	    //	    catch (final Exception e) {
-	    //		e.printStackTrace();
-	    //	    }
-	    //
-	    //	    lastNetwork.open();
-	    //	    System.out.println("-------------------------lastNetwork - " + lastNetwork.getShapesCount());
-	    //	    lastNetwork.close();
-
 
 	    // Create a layer with the last point of the network
 	    final IVectorLayer lastNetwork = network_lyr;
@@ -675,10 +660,11 @@ GeoAlgorithm {
 	    final int num_rings = num_points - num_points_network;
 	    System.out.println("---------> num_rings: " + num_rings);
 
-
 	    //Load model
 	    final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	    GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
+
+	    geomodel.setAnalysisExtent(extent);
 
 	    params = geomodel.getParameters();
 
@@ -687,61 +673,41 @@ GeoAlgorithm {
 		if (p.getParameterDescription().equalsIgnoreCase("Point")){
 		    params.getParameter(j).setParameterValue(lastNetwork);
 		}
-		//params.getParameter(bufferAlg.RINGS).setParameterValue(num_rings);
+		if (p.getParameterDescription().equalsIgnoreCase("Raster")){
+		    params.getParameter(j).setParameterValue(demLyr);
+		}
+		if (p.getParameterDescription().equalsIgnoreCase("Buffer_dist")){
+		    params.getParameter(j).setParameterValue(new Double(sample_dist));
+		}
+		if (p.getParameterDescription().equalsIgnoreCase("Rings_number")){
+		    params.getParameter(j).setParameterValue(new Double(num_rings));
+		}
 	    }
 
-	    //	    params.getParameter(bufferAlg.LAYER).setParameterValue(lastNetwork);
-	    //	    params.getParameter(bufferAlg.TYPE).setParameterValue(bufferAlg.BUFFER_OUTSIDE_POLY);
-	    //	    params.getParameter(bufferAlg.NOTROUNDED).setParameterValue(false);
-	    //	    params.getParameter(bufferAlg.DISTANCE).setParameterValue(sample_dist);
-	    //	    final int num_rings = num_points - num_points_network;
-	    //	    System.out.println("---------> num_rings: " + num_rings);
-	    //	    params.getParameter(bufferAlg.RINGS).setParameterValue(num_rings);
-	    //
-	    //	    extent = new AnalysisExtent(demLyr);
-	    //	    bufferAlg.setAnalysisExtent(extent);
-	    //
-	    //	    oo = bufferAlg.getOutputObjects();
-	    //
-	    //	    bSucess = bufferAlg.execute(m_Task, m_OutputFactory);
-	    //
-	    IVectorLayer resultRings = null;
-	    //	    if (bSucess) {
-	    //		resultRings = (IVectorLayer) oo.getOutput(bufferAlg.RESULT).getOutputObject();
-	    //		m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(resultRings);
-	    //	    }
+	    bSucess = geomodel.execute(m_Task, m_OutputFactory);
+
+	    if (bSucess) {
+		OutputObjectsSet outputs = geomodel.getOutputObjects();
+		for (int j = 0; j < outputs.getOutputLayersCount(); j++) {
+		    Output o = outputs.getOutput(j);
+		    System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
+		    if (o.getDescription().equalsIgnoreCase("Intersection")){
+			if (o.getTypeDescription().equalsIgnoreCase("vector")) {
+			    networkRing_lyr = (IVectorLayer) o.getOutputObject();
+			    m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
+			}
+		    }
+		}
+	    } else {
+		System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
+	    }
 
 
 	}
 
-
-	//	    final FixedDistanceBufferAlgorithm bufferAlg = new FixedDistanceBufferAlgorithm();
-	//	    params = bufferAlg.getParameters();
-	//	    params.getParameter(bufferAlg.LAYER).setParameterValue(lastNetwork);
-	//	    params.getParameter(bufferAlg.TYPE).setParameterValue(bufferAlg.BUFFER_OUTSIDE_POLY);
-	//	    params.getParameter(bufferAlg.NOTROUNDED).setParameterValue(false);
-	//	    params.getParameter(bufferAlg.DISTANCE).setParameterValue(sample_dist);
-	//	    final int num_rings = num_points - num_points_network;
-	//	    System.out.println("---------> num_rings: " + num_rings);
-	//	    params.getParameter(bufferAlg.RINGS).setParameterValue(num_rings);
-	//
-	//	    extent = new AnalysisExtent(demLyr);
-	//	    bufferAlg.setAnalysisExtent(extent);
-	//
-	//	    oo = bufferAlg.getOutputObjects();
-	//
-	//	    bSucess = bufferAlg.execute(m_Task, m_OutputFactory);
-	//
-	//	    IVectorLayer resultRings = null;
-	//	    if (bSucess) {
-	//		resultRings = (IVectorLayer) oo.getOutput(bufferAlg.RESULT).getOutputObject();
-	//		m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(resultRings);
-	//	    }
-	//}
-
-
-
 	network_lyr.close();
+
+	network_lyr.removeFilters();
 	// END COASTAL
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -847,9 +813,11 @@ GeoAlgorithm {
 	    attributes[12] = String.valueOf(dma_status_iri_array[0][i1]);
 	    attributes[13] = dma_status_iri_array[1][i1];
 
+	    System.out.println("IRI_Net: " + geom.getCoordinate().x);
+	    System.out.println("FALTA LOS RING!!!!!!!!!!!!!!!!!!!!! Proyectar el último vector de los 2 putnos finales");
+
 	    result.addFeature(geom, attributes);
 	}
-	//OJO CERRAR TODOS LOS ITERS!!!!!!!!!
 	iter.close();
 	network_lyr.close();
 
@@ -939,7 +907,17 @@ GeoAlgorithm {
 
 	final AnalysisExtent extent = new AnalysisExtent(network_lyr);
 	factLyr.addFilter(new BoundingBoxFilter(extent));
+
 	try {
+	    boolean coastal_rings = (networkRing_lyr != null);
+	    int num_rings = 0;
+
+	    if (coastal_rings){
+		network_lyr.open();
+		num_rings = network_lyr.getShapesCount();
+		network_lyr.close();
+	    }
+
 	    final IFeatureIterator iter1 = factLyr.iterator();
 	    for (int j = 0; iter1.hasNext(); j++) {
 		final IFeature feat1 = iter1.next();
@@ -948,12 +926,19 @@ GeoAlgorithm {
 
 		network_lyr.open();
 		final IFeatureIterator iter2 = network_lyr.iterator();
+
+		IFeatureIterator iter3 = null; // Coastal rings iterator
+		if (coastal_rings){
+		    iter3 = networkRing_lyr.iterator();
+		}
+
 		double distance = Double.MAX_VALUE;
 		double min_dist = Double.MAX_VALUE;
 		int min_idx = -1;
 		if (factLyr.getShapeType() == IVectorLayer.SHAPE_TYPE_POINT) {
-		    // When it is a point layer gets the closest networkchannel point
-		    for (int k = 0; iter2.hasNext(); k++) {
+		    // When it is a point layer gets the closest networkchannel point or coastal ring
+		    int k = 0;
+		    for (; iter2.hasNext(); k++) {
 			final IFeature feat2 = iter2.next();
 			final Geometry geom2 = feat2.getGeometry();
 			distance = geom1.distance(geom2);
@@ -963,16 +948,45 @@ GeoAlgorithm {
 			    min_idx = k;
 			}
 		    }
+
+		    // Now coastal rings, if exists
+		    if (k <= num_points && coastal_rings) {
+			for (; iter3.hasNext(); k++){
+			    final IFeature feat3 = iter3.next();
+			    final Geometry geom3 = feat3.getGeometry();
+			    distance = geom1.distance(geom3);
+			    if ((distance <= fa_radio) && (distance < min_dist)) {
+				System.out.println("RING red: " + k + " Distance: " + distance);
+				min_dist = distance;
+				min_idx = k;
+			    }
+			}
+		    }
+
 		}
 		else {
 		    // When it is a polygon/linestring layer gets all networkchannel points on the buffer
-		    for (int k = 0; iter2.hasNext(); k++) {
+		    int k = 0;
+		    for (; iter2.hasNext(); k++) {
 			final IFeature feat2 = iter2.next();
 			final Geometry geom2 = feat2.getGeometry();
 			distance = geom1.distance(geom2);
 			if ((distance <= fa_radio)) {
 			    pt_has_fa_array[k] = true;
 			    System.out.println("Pto red: " + k + " Distance: " + distance);
+			}
+		    }
+
+		    // Now coastal rings, if exists
+		    if (k <= num_points && coastal_rings) {
+			for (; iter3.hasNext(); k++){
+			    final IFeature feat3 = iter3.next();
+			    final Geometry geom3 = feat3.getGeometry();
+			    distance = geom1.distance(geom3);
+			    if ((distance <= fa_radio)) {
+				pt_has_fa_array[k] = true;
+				System.out.println("RING red: " + k + " Distance: " + distance);
+			    }
 			}
 		    }
 		}
@@ -985,8 +999,10 @@ GeoAlgorithm {
 			System.out.println("FACTOR not found");
 		    }
 		}
+		iter1.close();
+		iter2.close();
+		iter3.close();
 	    }
-	    factLyr.close();
 
 	    for (int h = 0; h < num_points; h++) {
 		if (pt_has_fa_array[h]) {
@@ -1000,7 +1016,6 @@ GeoAlgorithm {
 			iri_fa_array[h] = calculateIRI_line(h * sample_dist, sample_dist, fa_weight, perc_fact);
 		    }
 		    else {
-			System.out.println(" EEEEEEEEEEEEEEEERRRRRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOORRRRRRRRRRRRRRRRRR ");
 			System.out.println(" EEEEEEEEEEEEEEEERRRRRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOORRRRRRRRRRRRRRRRRR ");
 		    }
 		    System.out.println(h + " IRI: " + iri_fa_array[h]);
@@ -1061,8 +1076,10 @@ GeoAlgorithm {
 		    }
 		}
 		network_lyr.close();
+		iter1.close();
+		iter2.close();
 	    }
-	    dmaLyr.close();
+
 
 	    for (int h = 0; h < num_points; h++) {
 		if (status_dma_array[h] == 'A') {
