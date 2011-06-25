@@ -664,7 +664,8 @@ GeoAlgorithm {
 	    final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	    GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
 
-	    geomodel.setAnalysisExtent(extent);
+	    //geomodel.setAnalysisExtent(extent);
+	    geomodel.adjustOutputExtent();
 
 	    params = geomodel.getParameters();
 
@@ -701,7 +702,6 @@ GeoAlgorithm {
 	    } else {
 		System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	    }
-
 
 	}
 
@@ -981,6 +981,9 @@ GeoAlgorithm {
 		    if (k <= num_points && coastal_rings) {
 			for (; iter3.hasNext(); k++){
 			    final IFeature feat3 = iter3.next();
+			    if (feat3 == null) {
+				continue;
+			    }
 			    final Geometry geom3 = feat3.getGeometry();
 			    distance = geom1.distance(geom3);
 			    if ((distance <= fa_radio)) {
