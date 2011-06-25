@@ -1,1 +1,67 @@
-/home/nachouve/sextante/bufferRing_clip_ocean-land.model
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>
+	<model name="bufferring_clip_ocean-land" group="Models">
+		<algorithm key="PROC0" alg_cmd_line_name="clipbboxgrid" coords="257,138,145,59">
+			<assignment key="INPUT" assigned_to="INPUT1" />
+			<assignment key="POLYGONS" assigned_to="RESULTPROC4" />
+		</algorithm>
+		<algorithm key="PROC1" alg_cmd_line_name="reclassify" coords="262,225,86,59">
+			<assignment key="INPUT" assigned_to="RESULTPROC0" />
+			<assignment key="LUT" assigned_to="INNERPARAM1PROC1" />
+			<assignment key="METHOD" assigned_to="INNERPARAM0PROC1" />
+		</algorithm>
+		<algorithm key="PROC2" alg_cmd_line_name="vectorize" coords="144,312,225,59">
+			<assignment key="LAYER" assigned_to="RECLASSPROC1" />
+		</algorithm>
+		<algorithm key="PROC3" alg_cmd_line_name="clip" coords="69,310,49,59">
+			<assignment key="LAYER" assigned_to="RESULTPROC4" />
+			<assignment key="CLIPLAYER" assigned_to="RESULTPROC2" />
+		</algorithm>
+		<algorithm key="PROC4" alg_cmd_line_name="fixeddistancebuffer" coords="13,166,155,59">
+			<assignment key="LAYER" assigned_to="INPUT2" />
+			<assignment key="TYPES" assigned_to="INNERPARAM0PROC4" />
+			<assignment key="DISTANCE" assigned_to="INPUT3" />
+			<assignment key="RINGS" assigned_to="INPUT0" />
+			<assignment key="NOTROUNDED" assigned_to="INNERPARAM1PROC4" />
+		</algorithm>
+		<algorithm key="PROC5" alg_cmd_line_name="intersection" coords="471,273,98,59">
+			<assignment key="LAYER2" assigned_to="RESULTPROC2" />
+			<assignment key="LAYER1" assigned_to="RESULTPROC4" />
+		</algorithm>
+		<input name="INPUT1" description="Raster" tooltip="" class="class es.unex.sextante.parameters.ParameterRasterLayer" coords="406,21,63,59">
+			<attribute name="mandatory" value="true" />
+		</input>
+		<input name="INPUT2" description="Point" tooltip="" class="class es.unex.sextante.parameters.ParameterVectorLayer" coords="23,20,56,59">
+			<attribute name="mandatory" value="true" />
+			<attribute name="shape_type" value="0" />
+		</input>
+		<input name="INPUT3" description="buffer_dist" tooltip="" class="class es.unex.sextante.parameters.ParameterNumericalValue" coords="110,15,92,59">
+			<attribute name="min" value="-2.147483648E9" />
+			<attribute name="max" value="2.147483647E9" />
+			<attribute name="default" value="100.0" />
+			<attribute name="type" value="1" />
+		</input>
+		<input name="INPUT0" description="Rings_number" tooltip="" class="class es.unex.sextante.parameters.ParameterNumericalValue" coords="209,14,113,59">
+			<attribute name="min" value="0.0" />
+			<attribute name="max" value="100.0" />
+			<attribute name="default" value="1.0" />
+			<attribute name="type" value="1" />
+		</input>
+		<output key="RESULTPROC0" class="class es.unex.sextante.outputs.OutputRasterLayer" description="raster_anillos" />
+		<output key="RECLASSPROC1" class="class es.unex.sextante.outputs.OutputRasterLayer" description="reclassify" />
+		<output key="RESULTPROC2" class="class es.unex.sextante.outputs.OutputVectorLayer" description="vectorize" />
+		<output key="RESULTPROC3" class="class es.unex.sextante.outputs.OutputVectorLayer" description="rings_recortados" />
+		<output key="RESULTPROC4" class="class es.unex.sextante.outputs.OutputVectorLayer" description="Fixed_Rings" />
+		<output key="RESULTPROC5" class="class es.unex.sextante.outputs.OutputVectorLayer" description="Intersection" />
+		<data_object key="INNERPARAM0PROC1" value="0" description="Selection" />
+		<data_object key="INNERPARAM0PROC4" value="0" description="Selection" />
+		<data_object key="RESULTPROC0" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Clipped layer" from Clip grid with bbox' />
+		<data_object key="INNERPARAM2PROC4" value="false" description="Boolean" />
+		<data_object key="RESULTPROC2" value="class es.unex.sextante.modeler.elements.ModelElementVectorLayer,2" description='"Result" from Vectorize raster layer (polygons)' />
+		<data_object key="RECLASSPROC1" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Reclassify" from Process 1: Reclassify' />
+		<data_object key="INNERPARAM1PROC4" value="false" description="Boolean" />
+		<data_object key="RESULTPROC5" value="class es.unex.sextante.modeler.elements.ModelElementVectorLayer,2" description='"Clipped layer" from Process 7: Intersection' />
+		<data_object key="RESULTPROC3" value="class es.unex.sextante.modeler.elements.ModelElementVectorLayer,-1" description='"Clipped layer" from Clip' />
+		<data_object key="INNERPARAM1PROC1" value="[[-9.99999999999E11|0.0|1.0],[0.0|9.99999999999E11|0.0]]" description="Fixed Table" />
+		<data_object key="RESULTPROC4" value="class es.unex.sextante.modeler.elements.ModelElementVectorLayer,2" description='"Buffer" from Fixed distance buffer' />
+	</model>
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>
