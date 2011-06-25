@@ -695,7 +695,10 @@ GeoAlgorithm {
 		    if (o.getDescription().equalsIgnoreCase("Intersection")){
 			if (o.getTypeDescription().equalsIgnoreCase("vector")) {
 			    networkRing_lyr = (IVectorLayer) o.getOutputObject();
+			    networkRing_lyr.open();
+			    System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
 			    m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
+			    networkRing_lyr.close();
 			}
 		    }
 		}
@@ -706,13 +709,17 @@ GeoAlgorithm {
 	}
 
 	network_lyr.close();
-
 	network_lyr.removeFilters();
+
+	//Sé que el valor que me interesa del mar es el último
+	networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(networkRing_lyr.getFieldCount()-1, "=", 1));
+	networkRing_lyr.open();
+	System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
+	networkRing_lyr.close();
+
+
 	// END COASTAL
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 
 	//////////////////////
