@@ -69,7 +69,7 @@ import es.unex.sextante.vectorTools.linesToEquispacedPoints.LinesToEquispacedPoi
  * @author uve
  * 
  */
-public class SimpleIRIAlgorithm
+public class AccumulationIRIAlgorithm
 extends
 GeoAlgorithm {
 
@@ -215,7 +215,7 @@ GeoAlgorithm {
     @Override
     public void defineCharacteristics() {
 
-	setName("Simple IRI");
+	setName("Accumulation IRI");
 	setGroup("AA_IRI Algorithms");
 	setUserCanDefineAnalysisExtent(true);
 
