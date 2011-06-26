@@ -18,8 +18,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *******************************************************************************/
 package es.udc.sextante.gridAnalysis.IRI;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 import es.unex.sextante.additionalInfo.AdditionalInfoNumericalValue;
 import es.unex.sextante.additionalInfo.AdditionalInfoVectorLayer;
@@ -141,6 +143,7 @@ GeoAlgorithm {
     // VARIABLES
     private int                 num_points;
     private int                 sample_dist;
+    private int                 num_coastal_rings;
 
 
     IRasterLayer                demLyr;
@@ -547,9 +550,11 @@ GeoAlgorithm {
 	resultNetwork.addFilter(new FirstFeaturesVectorFilter(1));
 
 	resultNetwork.open();
+	System.out.println("");
 	System.out.println("Network lines: " + resultNetwork.getShapesCount());
+	System.out.println("Network line LENGHT: " + getFirstFeature(resultNetwork).getGeometry().getLength());
+	System.out.println("");
 	resultNetwork.close();
-
 
 	//////////////////////
 	// NETWORK TO POINTS
@@ -623,10 +628,10 @@ GeoAlgorithm {
 	    System.out.println("-------------------------resultNet_Points2.count(): " + resultNet_Points2.getShapesCount());
 	    resultNet_Points2.close();
 
-	    resultNet_Points2.addFilter(new FirstFeaturesVectorFilter(num_points));
+	    //resultNet_Points2.addFilter(new FirstFeaturesVectorFilter(num_points));
 
 	    // Set the layer used after
-	    network_lyr = resultNet_Points2;
+	    network_lyr = getFirstFeatures(resultNet_Points2, num_points);
 
 	    network_lyr.open();
 	    System.out.println("-------------------------network_lyr.count(): " + network_lyr.getShapesCount());
@@ -645,6 +650,8 @@ GeoAlgorithm {
 	// COASTAL RINGS
 
 	// See if the waste_water_spill affects a coastal sector
+	// Primero se calcula con anillos (cortados sólo en la zonas de mar)
+	// Luego se crean puntos (siguiendo la dirección y sentido del río en tierra) para la representación final
 
 	network_lyr.open();
 
@@ -657,15 +664,24 @@ GeoAlgorithm {
 	    final IVectorLayer lastNetwork = network_lyr;
 	    lastNetwork.addFilter(new LastFeaturesVectorFilter( num_points_network, 1));
 
-	    final int num_rings = num_points - num_points_network;
-	    System.out.println("---------> num_rings: " + num_rings);
+	    num_coastal_rings = num_points - num_points_network;
+	    System.out.println("---------> num_rings: " + num_coastal_rings);
+
+	    final IFeature firstfeature = getFirstFeature(lastNetwork);
+	    Geometry geom = firstfeature.getGeometry().buffer(num_coastal_rings * sample_dist);
+	    final Envelope env = geom.getEnvelopeInternal();
+
+	    extent = new AnalysisExtent();
+	    final boolean recalculate_cellsize = true;
+	    extent.setXRange(env.getMinX(), env.getMaxX(), recalculate_cellsize);
+	    extent.setYRange(env.getMinY(), env.getMaxY(), recalculate_cellsize);
+	    extent.setCellSize(20.);
 
 	    //Load model
 	    final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	    GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
 
-	    //geomodel.setAnalysisExtent(extent);
-	    geomodel.adjustOutputExtent();
+	    geomodel.setAnalysisExtent(extent);
 
 	    params = geomodel.getParameters();
 
@@ -681,7 +697,7 @@ GeoAlgorithm {
 		    params.getParameter(j).setParameterValue(new Double(sample_dist));
 		}
 		if (p.getParameterDescription().equalsIgnoreCase("Rings_number")){
-		    params.getParameter(j).setParameterValue(new Double(num_rings));
+		    params.getParameter(j).setParameterValue(new Double(num_coastal_rings));
 		}
 	    }
 
@@ -711,8 +727,9 @@ GeoAlgorithm {
 	network_lyr.close();
 	network_lyr.removeFilters();
 
-	//Sé que el valor que me interesa del mar es el último
-	networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(networkRing_lyr.getFieldCount()-1, "=", 1));
+	//Sé que el valor que me interesa del mar es el último attribute
+	int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
+	networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
 	networkRing_lyr.open();
 	System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
 	networkRing_lyr.close();
@@ -802,32 +819,62 @@ GeoAlgorithm {
 
 	network_lyr.open();
 	final IFeatureIterator iter = network_lyr.iterator();
-	for (int i1 = 0; iter.hasNext(); i1++) {
+	int ii1 = 0;
+	/////////////////////////////////
+	// 1.- Puntos en tierra
+	for (; iter.hasNext(); ii1++) {
 	    geom = iter.next().getGeometry();
 	    final Object[] attributes = new Object[IRINetworkChannelLayer.fieldNames.length];
-	    attributes[0] = i1 * sample_dist;
-	    attributes[1] = iri_f1_array[i1];
-	    attributes[2] = iri_f2_array[i1];
-	    attributes[3] = iri_f3_array[i1];
-	    attributes[4] = iri_f4_array[i1];
-	    attributes[5] = iri_f5_array[i1];
-	    attributes[6] = iri_f6_array[i1];
-	    attributes[7] = iri_f7_array[i1];
-	    attributes[8] = iri_f8_array[i1];
-	    attributes[9] = iri_f9_array[i1];
-	    attributes[10] = iri_f10_array[i1];
-	    attributes[11] = iri_f11_array[i1];
-	    attributes[12] = String.valueOf(dma_status_iri_array[0][i1]);
-	    attributes[13] = dma_status_iri_array[1][i1];
+	    attributes[0] = ii1 * sample_dist;
+	    attributes[1] = iri_f1_array[ii1];
+	    attributes[2] = iri_f2_array[ii1];
+	    attributes[3] = iri_f3_array[ii1];
+	    attributes[4] = iri_f4_array[ii1];
+	    attributes[5] = iri_f5_array[ii1];
+	    attributes[6] = iri_f6_array[ii1];
+	    attributes[7] = iri_f7_array[ii1];
+	    attributes[8] = iri_f8_array[ii1];
+	    attributes[9] = iri_f9_array[ii1];
+	    attributes[10] = iri_f10_array[ii1];
+	    attributes[11] = iri_f11_array[ii1];
+	    attributes[12] = String.valueOf(dma_status_iri_array[0][ii1]);
+	    attributes[13] = dma_status_iri_array[1][ii1];
 
-	    System.out.println("IRI_Net: " + geom.getCoordinate().x);
-	    System.out.println("FALTA LOS RING!!!!!!!!!!!!!!!!!!!!! Proyectar el último vector de los 2 putnos finales");
+	    System.out.println(ii1 + " IRI_Net: " + geom.getCoordinate().x);
 
 	    result.addFeature(geom, attributes);
 	}
 	iter.close();
-	network_lyr.close();
+	System.out.println("******************* Puntos en tierra: " + ii1);
 
+	/////////////////////////////////
+	// 2.- Puntos en el mar
+	Geometry[] geoms = getGeometriesOnSameDirection(network_lyr, num_coastal_rings, sample_dist);
+	System.out.println("******************* Puntos Teóricos en el mar: " + geoms.length);
+
+	for (int k = 0; k < geoms.length; ii1++, k++) {
+	    geom = geoms[k];
+	    final Object[] attributes = new Object[IRINetworkChannelLayer.fieldNames.length];
+	    attributes[0] = ii1 * sample_dist;
+	    attributes[1] = iri_f1_array[ii1];
+	    attributes[2] = iri_f2_array[ii1];
+	    attributes[3] = iri_f3_array[ii1];
+	    attributes[4] = iri_f4_array[ii1];
+	    attributes[5] = iri_f5_array[ii1];
+	    attributes[6] = iri_f6_array[ii1];
+	    attributes[7] = iri_f7_array[ii1];
+	    attributes[8] = iri_f8_array[ii1];
+	    attributes[9] = iri_f9_array[ii1];
+	    attributes[10] = iri_f10_array[ii1];
+	    attributes[11] = iri_f11_array[ii1];
+	    attributes[12] = String.valueOf(dma_status_iri_array[0][ii1]);
+	    attributes[13] = dma_status_iri_array[1][ii1];
+
+	    System.out.println(ii1 + ": IRI_rings: " + geom.getCoordinate().x);
+	    result.addFeature(geom, attributes);
+	}
+
+	network_lyr.close();
 
 	System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Sumarize");
 
@@ -880,16 +927,27 @@ GeoAlgorithm {
 
 
     private void calculateArrayIRI() {
+	System.out.println("calculateIRI_FA_array(capt_existLyr, capt_existWei)");
 	iri_f1_array = calculateIRI_FA_array(capt_existLyr, capt_existWei);
+	System.out.println("calculateIRI_FA_array(capt_propostLyr, capt_propostWei);");
 	iri_f2_array = calculateIRI_FA_array(capt_propostLyr, capt_propostWei);
+	System.out.println("calculateIRI_FA_array(espacios_ProtLyr, espacios_ProtWei);");
 	iri_f3_array = calculateIRI_FA_array(espacios_ProtLyr, espacios_ProtWei);
+	System.out.println("calculateIRI_FA_array(zpiscic_protLyr, zpiscic_protWei);");
 	iri_f4_array = calculateIRI_FA_array(zpiscic_protLyr, zpiscic_protWei);
+	System.out.println("calculateIRI_FA_array(praias_marLyr, praias_marWei);");
 	iri_f5_array = calculateIRI_FA_array(praias_marLyr, praias_marWei);
+	System.out.println("calculateIRI_FA_array(praias_fluLyr, praias_fluWei);");
 	iri_f6_array = calculateIRI_FA_array(praias_fluLyr, praias_fluWei);
+	System.out.println("calculateIRI_FA_array(zsensiblesLyr, zsensiblesWei);");
 	iri_f7_array = calculateIRI_FA_array(zsensiblesLyr, zsensiblesWei);
+	System.out.println("calculateIRI_FA_array(embalsesLyr, embalsesWei);");
 	iri_f8_array = calculateIRI_FA_array(embalsesLyr, embalsesWei);
+	System.out.println("calculateIRI_FA_array(bateasLyr, bateasWei);");
 	iri_f9_array = calculateIRI_FA_array(bateasLyr, bateasWei);
+	System.out.println("calculateIRI_FA_array(zmarisqueoLyr, zmarisqueoWei);");
 	iri_f10_array = calculateIRI_FA_array(zmarisqueoLyr, zmarisqueoWei);
+	System.out.println("calculateIRI_FA_array(piscifactoriasLyr, piscifactoriasWei);");
 	iri_f11_array = calculateIRI_FA_array(piscifactoriasLyr, piscifactoriasWei);
     }
 
@@ -1140,7 +1198,6 @@ GeoAlgorithm {
 	vectLyr.addFilter(new FirstFeaturesVectorFilter(num_points));
 	vectLyr.open();
 
-	aux.open();
 	try {
 	    final IFeatureIterator iter = vectLyr.iterator();
 	    for (int i = 0; iter.hasNext(); i++) {
@@ -1152,7 +1209,6 @@ GeoAlgorithm {
 	    e.printStackTrace();
 	}
 
-	aux.close();
 	try {
 	    aux.postProcess();
 	}
@@ -1160,10 +1216,13 @@ GeoAlgorithm {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
-	vectLyr.close();
 
+
+	aux.open();
 	System.out.println("-.---- getFirstFeatures.aux: " + aux.getShapesCount());
 	System.out.println("-.---- getFirstFeatures.vect: " + vectLyr.getShapesCount());
+	aux.close();
+	vectLyr.close();
 
 	return aux;
 
@@ -1262,6 +1321,50 @@ GeoAlgorithm {
 	    value = value + array[j];
 	}
 	return value;
+    }
+
+
+    private Geometry[] getGeometriesOnSameDirection(IVectorLayer vectLyr, int num_geoms, int dist) {
+	Geometry[] geoms = new Geometry[num_geoms];
+
+	vertidoLyr.open();
+	vectLyr.addFilter(new LastFeaturesVectorFilter(vectLyr.getShapesCount(), 2));
+
+	Coordinate p1 = null, p2 = null;
+	IFeatureIterator iter = vectLyr.iterator();
+	try {
+	    if (iter.hasNext()){
+		p1 = iter.next().getGeometry().getCoordinate();
+	    }
+	    if (iter.hasNext()){
+		p2 = iter.next().getGeometry().getCoordinate();
+	    }
+	} catch (IteratorException e) {
+	    e.printStackTrace();
+	}
+	vectLyr.removeFilters();
+	vertidoLyr.close();
+
+	double dx = 0;
+	double dy = 0;
+	if ((p1 != null) && (p2 != null)){
+	    double x = p2.x - p1.x;
+	    double y = p2.y - p1.y;
+	    double module = Math.sqrt(x*x+y*y);
+	    dx = (dist * x)/module ;
+	    dy = (dist * y)/module;
+	}
+
+	double x = p2.x;
+	double y = p2.y;
+	GeometryFactory gf = new GeometryFactory();
+	for (int i = 0; i < num_geoms; i++){
+	    x = x + dx;
+	    y = y + dy;
+	    geoms[i] = gf.createPoint(new Coordinate(x, y));
+	}
+
+	return geoms;
     }
 
 }
