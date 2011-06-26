@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *******************************************************************************/
 package es.udc.sextante.gridAnalysis.IRI;
 
+import java.util.Iterator;
+
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -713,13 +715,11 @@ GeoAlgorithm {
 		    Output o = outputs.getOutput(j);
 		    System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
 		    if (o.getDescription().equalsIgnoreCase("Intersection")){
-			if (o.getTypeDescription().equalsIgnoreCase("vector")) {
 			    networkRing_lyr = (IVectorLayer) o.getOutputObject();
 			    networkRing_lyr.open();
 			    System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
 			    m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
 			    networkRing_lyr.close();
-			}
 		    }
 		}
 	    } else {
@@ -816,80 +816,11 @@ GeoAlgorithm {
 	System.out.println("-------------------------- CALCULE ECOLOGICAL STATUS");
 	final Object[][] dma_status_iri_array = calculateIRI_DMA_array(waterBodiesLyr);
 
-
 	//////////////////////
 	// PREPARE OUTPUTS
 	System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Network Points");
 
-	final IVectorLayer result = getNewVectorLayer("IRI_network", Sextante.getText("IRI_network_result"),
-		IRINetworkChannelLayer.shapetype, IRINetworkChannelLayer.fieldTypes, IRINetworkChannelLayer.fieldNames);
-
-	network_lyr.open();
-	final IFeatureIterator iter = network_lyr.iterator();
-	int ii1 = 0;
-	/////////////////////////////////
-	// 1.- Puntos en tierra
-	for (; iter.hasNext(); ii1++) {
-	    geom = iter.next().getGeometry();
-	    final Object[] attributes = new Object[IRINetworkChannelLayer.fieldNames.length];
-	    attributes[0] = ii1 * sample_dist;
-	    attributes[1] = iri_f1_array[ii1];
-	    attributes[2] = iri_f2_array[ii1];
-	    attributes[3] = iri_f3_array[ii1];
-	    attributes[4] = iri_f4_array[ii1];
-	    attributes[5] = iri_f5_array[ii1];
-	    attributes[6] = iri_f6_array[ii1];
-	    attributes[7] = iri_f7_array[ii1];
-	    attributes[8] = iri_f8_array[ii1];
-	    attributes[9] = iri_f9_array[ii1];
-	    attributes[10] = iri_f10_array[ii1];
-	    attributes[11] = iri_f11_array[ii1];
-	    attributes[12] = String.valueOf(dma_status_iri_array[0][ii1]);
-	    attributes[13] = dma_status_iri_array[1][ii1];
-
-	    System.out.println(ii1 + " IRI_Net: " + geom.getCoordinate().x);
-
-	    result.addFeature(geom, attributes);
-	}
-	iter.close();
-	System.out.println("******************* Puntos en tierra: " + ii1);
-
-	/////////////////////////////////
-	// 2.- Puntos en el mar
-	Geometry[] geoms = getGeometriesOnSameDirection(network_lyr, num_coastal_rings, sample_dist);
-	System.out.println("******************* Puntos Te�ricos en el mar: " + geoms.length);
-
-	for (int k = 0; k < geoms.length; ii1++, k++) {
-	    geom = geoms[k];
-	    final Object[] attributes = new Object[IRINetworkChannelLayer.fieldNames.length];
-	    attributes[0] = ii1 * sample_dist;
-	    attributes[1] = iri_f1_array[ii1];
-	    attributes[2] = iri_f2_array[ii1];
-	    attributes[3] = iri_f3_array[ii1];
-	    attributes[4] = iri_f4_array[ii1];
-	    attributes[5] = iri_f5_array[ii1];
-	    attributes[6] = iri_f6_array[ii1];
-	    attributes[7] = iri_f7_array[ii1];
-	    attributes[8] = iri_f8_array[ii1];
-	    attributes[9] = iri_f9_array[ii1];
-	    attributes[10] = iri_f10_array[ii1];
-	    attributes[11] = iri_f11_array[ii1];
-	    attributes[12] = String.valueOf(dma_status_iri_array[0][ii1]);
-	    attributes[13] = dma_status_iri_array[1][ii1];
-
-	    System.out.println(ii1 + ": IRI_rings: " + geom.getCoordinate().x);
-	    result.addFeature(geom, attributes);
-	}
-
-	network_lyr.close();
-
-	System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Sumarize");
-
-	final IVectorLayer result2 = getNewVectorLayer("IRI_sumarize", Sextante.getText("IRI_sumarize_2010"),
-		IRISumarizeLayer.shapetype, IRISumarizeLayer.fieldTypes, IRISumarizeLayer.fieldNames);
-
-	geom = firstfeature.getGeometry();
-
+	// CALCULATE ALL THE IRIs
 	for (int i1 = 0; i1 < iri_f1_array.length; i1++) {
 
 		iri_values[i1][2] =  iri_f1_array[i1];
@@ -911,26 +842,101 @@ GeoAlgorithm {
 		//IRI TOTAL
 		iri_values[i1][5] = iri_values[i1][4] + iri_values[i1][3];
 
-		//IMPRIMO LOS DATOS COMO COMPROBACIÓN CUTRONGA
-		System.out.println("-------------------------- IRI VALUES FOR POINT " + i1);
-		System.out.println("--- HE: " + iri_values[i1][0]);
-		System.out.println("--- DIL: " + iri_values[i1][1]);
-		System.out.println("--- FA: " + iri_values[i1][2]);
-		System.out.println("--- DMA: " + iri_values[i1][3]);
-		System.out.println("--- FACT: " + iri_values[i1][4]);
-		System.out.println("--- TOTAL: " + iri_values[i1][5]);
 	}
+
+	final IVectorLayer result = getNewVectorLayer("IRI_network", Sextante.getText("IRI_network_result"),
+			IRIAccumulatedLayer.shapetype, IRIAccumulatedLayer.fieldTypes, IRIAccumulatedLayer.fieldNames);
+
+	network_lyr.open();
+	final IFeatureIterator iter = network_lyr.iterator();
+	int ii1 = 0;
+	/////////////////////////////////
+	// 1.- Puntos en tierra
+	for (; iter.hasNext(); ii1++) {
+	    geom = iter.next().getGeometry();
+	    final Object[] attributes = new Object[IRIAccumulatedLayer.fieldNames.length];
+	    attributes[0] = ii1 * sample_dist;
+	    attributes[1] = iri_values[ii1][5];
+	    attributes[2] = String.valueOf(dma_status_iri_array[0][ii1]);
+	    attributes[3] = iri_values[ii1][3];
+	    attributes[4] = iri_values[ii1][4];
+	    attributes[5] = iri_values[ii1][0];
+	    attributes[6] = iri_values[ii1][1];
+	    attributes[7] = iri_f1_array[ii1];
+	    attributes[8] = iri_f2_array[ii1];
+	    attributes[9] = iri_f3_array[ii1];
+	    attributes[10] = iri_f4_array[ii1];
+	    attributes[11] = iri_f5_array[ii1];
+	    attributes[12] = iri_f6_array[ii1];
+	    attributes[13] = iri_f7_array[ii1];
+	    attributes[14] = iri_f8_array[ii1];
+	    attributes[15] = iri_f9_array[ii1];
+	    attributes[16] = iri_f10_array[ii1];
+	    attributes[17] = iri_f11_array[ii1];
+
+	    System.out.println(ii1 + " IRI_Net: " + geom.getCoordinate().x);
+
+	    result.addFeature(geom, attributes);
+	}
+	iter.close();
+	System.out.println("******************* Puntos en tierra: " + ii1);
+
+	/////////////////////////////////
+	// 2.- Puntos en el mar
+	Geometry[] geoms = getGeometriesOnSameDirection(network_lyr, num_coastal_rings, sample_dist);
+	System.out.println("******************* Puntos Te�ricos en el mar: " + geoms.length);
+
+	for (int k = 0; k < geoms.length; ii1++, k++) {
+	    geom = geoms[k];
+	    final Object[] attributes = new Object[IRIAccumulatedLayer.fieldNames.length];
+	    attributes[0] = ii1 * sample_dist;
+	    attributes[1] = iri_values[ii1][5];
+	    attributes[2] = String.valueOf(dma_status_iri_array[0][ii1]);
+	    attributes[3] = iri_values[ii1][3];
+	    attributes[4] = iri_values[ii1][4];
+	    attributes[5] = iri_values[ii1][0];
+	    attributes[6] = iri_values[ii1][1];
+	    attributes[7] = iri_f1_array[ii1];
+	    attributes[8] = iri_f2_array[ii1];
+	    attributes[9] = iri_f3_array[ii1];
+	    attributes[10] = iri_f4_array[ii1];
+	    attributes[11] = iri_f5_array[ii1];
+	    attributes[12] = iri_f6_array[ii1];
+	    attributes[13] = iri_f7_array[ii1];
+	    attributes[14] = iri_f8_array[ii1];
+	    attributes[15] = iri_f9_array[ii1];
+	    attributes[16] = iri_f10_array[ii1];
+	    attributes[17] = iri_f11_array[ii1];
+
+	    System.out.println(ii1 + ": IRI_rings: " + geom.getCoordinate().x);
+	    result.addFeature(geom, attributes);
+	}
+
+	network_lyr.close();
+
+	/*System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Accumulated");
 
 	//CUENCA
 	//attributes[16] = WATERSHED_KM2;
 
-	//NO TENGO MUY CLARO CÓMO PRESENTARLOS, ESTO NO TIENE SENTIDO
-	final Object[] attr = new Object[iri_values.length];
-	for (int i1 = 0; i1 < iri_values.length; i1++) {
-	    attr[i1] = new Double(iri_values[i1][5]);
-	}
+	IFeatureIterator iter_ptos_vert = vertidoLyr.iterator();
 
-	result2.addFeature(geom, attr);
+	int p = 0;
+	while (iter_ptos_vert.hasNext()) {
+
+		final IVectorLayer result2 = getNewVectorLayer("IRI_pto_" + p, Sextante.getText("IRI_sumarize_2010"),
+			IRISumarizeLayer.shapetype, IRISumarizeLayer.fieldTypes, IRISumarizeLayer.fieldNames);
+
+		geom = iter_ptos_vert.next().getGeometry();
+
+		final Object[] attr = new Object[iri_values.length];
+		for (int i1 = 0; i1 < iri_values.length; i1++) {
+		    attr[i1] = new Double(iri_values[p][i1]);
+		}
+
+		result2.addFeature(geom, attr);
+		p++;
+	}*/
 
 	return !m_Task.isCanceled();
     }
