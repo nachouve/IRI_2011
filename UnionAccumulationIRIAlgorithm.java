@@ -23,7 +23,11 @@ import java.util.ArrayList;
 
 import es.unex.sextante.additionalInfo.AdditionalInfoMultipleInput;
 import es.unex.sextante.additionalInfo.AdditionalInfoNumericalValue;
+import es.unex.sextante.additionalInfo.AdditionalInfoVectorLayer;
+import es.unex.sextante.core.AnalysisExtent;
 import es.unex.sextante.core.GeoAlgorithm;
+import es.unex.sextante.core.OutputObjectsSet;
+import es.unex.sextante.core.ParametersSet;
 import es.unex.sextante.dataObjects.IVectorLayer;
 import es.unex.sextante.exceptions.GeoAlgorithmExecutionException;
 import es.unex.sextante.exceptions.NullParameterAdditionalInfoException;
@@ -31,6 +35,11 @@ import es.unex.sextante.exceptions.NullParameterValueException;
 import es.unex.sextante.exceptions.RepeatedParameterNameException;
 import es.unex.sextante.exceptions.WrongParameterIDException;
 import es.unex.sextante.exceptions.WrongParameterTypeException;
+import es.unex.sextante.gui.core.SextanteGUI;
+import es.unex.sextante.gui.modeler.ModelAlgorithmIO;
+import es.unex.sextante.gui.settings.SextanteModelerSettings;
+import es.unex.sextante.outputs.Output;
+import es.unex.sextante.parameters.Parameter;
 
 
 /**
@@ -70,6 +79,8 @@ GeoAlgorithm {
 
 	    String[] sValues = {"IRI", "IRI_DMA", "IRI_FACT"};
 	    m_Parameters.addSelection(IRI_TYPE, "Tipo de IRI a calcular", sValues );
+
+	    addOutputVectorLayer("RESULT_ACC_IRI", "RESULT_ACC_IRI", AdditionalInfoVectorLayer.SHAPE_TYPE_POLYGON);
 
 	} catch (RepeatedParameterNameException e) {
 	    // TODO Auto-generated catch block
@@ -117,21 +128,59 @@ GeoAlgorithm {
     public boolean processAlgorithm() throws GeoAlgorithmExecutionException {
 	initVariables();
 
-	Rectangle2D extent = null;
-	Rectangle2D full_extent = null;
+	Rectangle2D extent2D = null;
+	Rectangle2D full_extent2D = null;
 	for (int i = 0; i < iri_lyrs.length; i++) {
 	    IVectorLayer acc_iri = iri_lyrs[i];
 	    acc_iri.open();
 	    System.out.println(acc_iri.getName() + "  Num.Feats: " + acc_iri.getShapesCount());
-	    extent = acc_iri.getFullExtent();
+	    extent2D = acc_iri.getFullExtent();
 
-	    if (full_extent == null){
-		full_extent = extent;
+	    if (full_extent2D == null){
+		full_extent2D = extent2D;
 	    } else {
-		full_extent = extent.createUnion(full_extent);
+		full_extent2D = extent2D.createUnion(full_extent2D);
 	    }
-
 	    acc_iri.close();
+	}
+
+	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
+	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"test_create_graticule.model");
+
+	AnalysisExtent ext = new AnalysisExtent();
+
+	ext.setCellSize(cell_size);
+	ext.setXRange(extent2D.getMinX(), extent2D.getMaxX(), false);
+	ext.setYRange(extent2D.getMinY(), extent2D.getMaxY(), true);
+	geomodel.setAnalysisExtent(ext);
+
+	ParametersSet params = geomodel.getParameters();
+
+	for (int j=0; j < params.getNumberOfParameters(); j++) {
+	    Parameter p = params.getParameter(j);
+	    if (p.getParameterDescription().equalsIgnoreCase("cell_size")){
+		params.getParameter(j).setParameterValue(new Double(cell_size));
+	    }
+	}
+
+	boolean bSucess = geomodel.execute(m_Task, m_OutputFactory);
+
+	IVectorLayer graticule = null;
+	if (bSucess) {
+	    OutputObjectsSet outputs = geomodel.getOutputObjects();
+	    for (int j = 0; j < outputs.getOutputLayersCount(); j++) {
+		Output o = outputs.getOutput(j);
+		System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
+		if (o.getDescription().equalsIgnoreCase("graticule")){
+		    graticule = (IVectorLayer) o.getOutputObject();
+		    graticule.open();
+		    System.out.println("graticule.feats: " +  graticule.getShapesCount());
+		    m_OutputObjects.getOutput("RESULT_ACC_IRI").setOutputObject(graticule);
+		    graticule.close();
+		}
+	    }
+	} else {
+	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
 
 	return !m_Task.isCanceled();
