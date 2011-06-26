@@ -60,15 +60,12 @@ import es.unex.sextante.vectorTools.linesToEquispacedPoints.LinesToEquispacedPoi
 
 
 /**
- * Estoy siguiendo las instruciones que hay en el DROPBOX de Concha To compile this algorithm it must be place on gridAnalysis
- * project of SEXTANTE.
  * 
- * En la zona de costa, la metodolog�a cambia un poco.
  * 
  * Observaciones: - Las unidades del SIG deben ser "METROS" - ACCFLOW debe contar celdas (autom�ticamente el algoritmo obtendr� la
  * cuenca en km2)
  * 
- * @author uve
+ * @author uve, jorgelf
  * 
  */
 public class AccumulationIRIAlgorithm
@@ -213,7 +210,7 @@ GeoAlgorithm {
     double[]                    iri_f10_array;
     double[]                    iri_f11_array;
 
-	//ARRAY PARA ALMACENAR IRI_HE, IRI_DIL, IRI_FA, IRI_DMA, IRI_FACT E IRI_TOTAL
+    //ARRAY PARA ALMACENAR IRI_HE, IRI_DIL, IRI_FA, IRI_DMA, IRI_FACT E IRI_TOTAL
     double[][]                  iri_values;
 
 
@@ -779,10 +776,10 @@ GeoAlgorithm {
 	System.out.println("-------------------------- CALCULE HE FOR ALL POINTS");
 
 	for (int h = 0; h < num_points; h++) {
-		double dist = h * sample_dist;
-		double hep_xp = HE_VALUE * Math.exp(-0.0009 * dist );
-		iri_values[h][0] = (double) (he_weight * perc_fact * hep_xp) / 100000;
-    }
+	    double dist = h * sample_dist;
+	    double hep_xp = HE_VALUE * Math.exp(-0.0009 * dist );
+	    iri_values[h][0] = (he_weight * perc_fact * hep_xp) / 100000;
+	}
 
 	//////////////////////
 	// CALCULAR DILUCION
@@ -790,20 +787,20 @@ GeoAlgorithm {
 
 	// Se calcula para todos los puntos
 	for (int h = 0; h < num_points; h++) {
-		final double concentracion_max = getMaxConcentration(h * sample_dist, cmez, crio, WATERSHED_KM2, HE_VALUE);
-		System.out.println("-------------------------- DILUTION IN POINT " + h);
-		System.out.println("   concentracion_max: " + concentracion_max);
+	    final double concentracion_max = getMaxConcentration(h * sample_dist, cmez, crio, WATERSHED_KM2, HE_VALUE);
+	    System.out.println("-------------------------- DILUTION IN POINT " + h);
+	    System.out.println("   concentracion_max: " + concentracion_max);
 
-		if (concentracion_max >= 300) {
-		    iri_values[h][1] = 0.0;
-		}
-		else {
-		    iri_values[h][1] = (dil_weight * perc_fact / 100) * (1 - (concentracion_max / 300));
-		}
-		System.out.println("   dil_weight: " + dil_weight);
-		System.out.println("   perc_fact: " + perc_fact);
-		System.out.println("   IRI_DILUCION: " + iri_values[h][1]);
-    }
+	    if (concentracion_max >= 300) {
+		iri_values[h][1] = 0.0;
+	    }
+	    else {
+		iri_values[h][1] = (dil_weight * perc_fact / 100) * (1 - (concentracion_max / 300));
+	    }
+	    System.out.println("   dil_weight: " + dil_weight);
+	    System.out.println("   perc_fact: " + perc_fact);
+	    System.out.println("   IRI_DILUCION: " + iri_values[h][1]);
+	}
 
 	//////////////////////
 	// CALCULAR FA
@@ -916,16 +913,39 @@ GeoAlgorithm {
 
 	/*System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Accumulated");
 
-	//CUENCA
-	//attributes[16] = WATERSHED_KM2;
 
-	IFeatureIterator iter_ptos_vert = vertidoLyr.iterator();
+	geom = firstfeature.getGeometry();
 
-	int p = 0;
-	while (iter_ptos_vert.hasNext()) {
+	for (int i1 = 0; i1 < iri_f1_array.length; i1++) {
 
-		final IVectorLayer result2 = getNewVectorLayer("IRI_pto_" + p, Sextante.getText("IRI_sumarize_2010"),
-			IRISumarizeLayer.shapetype, IRISumarizeLayer.fieldTypes, IRISumarizeLayer.fieldNames);
+	    iri_values[i1][2] =  iri_f1_array[i1];
+	    iri_values[i1][2] +=  iri_f2_array[i1];
+	    iri_values[i1][2] +=  iri_f3_array[i1];
+	    iri_values[i1][2] +=  iri_f4_array[i1];
+	    iri_values[i1][2] +=  iri_f5_array[i1];
+	    iri_values[i1][2] +=  iri_f6_array[i1];
+	    iri_values[i1][2] +=  iri_f7_array[i1];
+	    iri_values[i1][2] +=  iri_f8_array[i1];
+	    iri_values[i1][2] +=  iri_f9_array[i1];
+	    iri_values[i1][2] +=  iri_f10_array[i1];
+	    iri_values[i1][2] +=  iri_f11_array[i1];
+	    iri_values[i1][3] = (Double) dma_status_iri_array[1][i1];
+
+	    //IRI_FACT
+	    iri_values[i1][4] = iri_values[i1][0] + iri_values[i1][1] + iri_values[i1][2];
+
+	    //IRI TOTAL
+	    iri_values[i1][5] = iri_values[i1][4] + iri_values[i1][3];
+
+	    //IMPRIMO LOS DATOS COMO COMPROBACIÓN CUTRONGA
+	    System.out.println("-------------------------- IRI VALUES FOR POINT " + i1);
+	    System.out.println("--- HE: " + iri_values[i1][0]);
+	    System.out.println("--- DIL: " + iri_values[i1][1]);
+	    System.out.println("--- FA: " + iri_values[i1][2]);
+	    System.out.println("--- DMA: " + iri_values[i1][3]);
+	    System.out.println("--- FACT: " + iri_values[i1][4]);
+	    System.out.println("--- TOTAL: " + iri_values[i1][5]);
+	}
 
 		geom = iter_ptos_vert.next().getGeometry();
 
@@ -1116,7 +1136,6 @@ GeoAlgorithm {
 	return iri_fa_array;
     }
 
-
     //      // [0][] => status
     //      // [1][] => iri
     //      Object[][] dma_status_iri_array = new Object[2][num_points];
@@ -1233,7 +1252,6 @@ GeoAlgorithm {
 	    e.printStackTrace();
 	}
 
-
 	aux.open();
 	System.out.println("-.---- getFirstFeatures.aux: " + aux.getShapesCount());
 	System.out.println("-.---- getFirstFeatures.vect: " + vectLyr.getShapesCount());
@@ -1307,7 +1325,7 @@ GeoAlgorithm {
 	    final int weight,
 	    final int percent_fact) {
 
-    double he_xp = iri_values[xp/dist_points][0];
+	double he_xp = iri_values[xp/dist_points][0];
 	final double constant = -1.011233793;
 	final double dist_2 = ((double) dist_points / 2);
 	final double mul_fact1 = ((double) (percent_fact * weight) / 100);
