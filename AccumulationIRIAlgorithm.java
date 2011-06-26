@@ -211,6 +211,9 @@ GeoAlgorithm {
     double[]                    iri_f10_array;
     double[]                    iri_f11_array;
 
+	//ARRAY PARA ALMACENAR IRI_HE, IRI_DIL, IRI_FA, IRI_DMA, IRI_FACT E IRI_TOTAL
+    double[][]                  iri_values;
+
 
     @Override
     public void defineCharacteristics() {
@@ -437,6 +440,7 @@ GeoAlgorithm {
 
 	    sample_dist = m_Parameters.getParameterValueAsInt(SAMPLE_DIST);
 	    num_points = (MAX_IRI_DIST / sample_dist);
+	    iri_values = new double[num_points][6];
 
 	    ecoA_w = m_Parameters.getParameterValueAsInt("ecoW_A");
 	    ecoB_w = m_Parameters.getParameterValueAsInt("ecoW_B");
@@ -769,6 +773,38 @@ GeoAlgorithm {
 
 	accflow.close();
 
+
+	//////////////////////
+	// CALCULAR HE PARA TODOS LOS PUNTOS
+	System.out.println("-------------------------- CALCULE HE FOR ALL POINTS");
+
+	for (int h = 0; h < num_points; h++) {
+		double dist = h * sample_dist;
+		double hep_xp = HE_VALUE * Math.exp(-0.0009 * dist );
+		iri_values[h][0] = (double) (he_weight * perc_fact * hep_xp) / 100000;
+    }
+
+	//////////////////////
+	// CALCULAR DILUCION
+	System.out.println("-------------------------- CALCULE DILUTION");
+
+	// Se calcula para todos los puntos
+	for (int h = 0; h < num_points; h++) {
+		final double concentracion_max = getMaxConcentration(h * sample_dist, cmez, crio, WATERSHED_KM2, HE_VALUE);
+		System.out.println("-------------------------- DILUTION IN POINT " + h);
+		System.out.println("   concentracion_max: " + concentracion_max);
+
+		if (concentracion_max >= 300) {
+		    iri_values[h][1] = 0.0;
+		}
+		else {
+		    iri_values[h][1] = (dil_weight * perc_fact / 100) * (1 - (concentracion_max / 300));
+		}
+		System.out.println("   dil_weight: " + dil_weight);
+		System.out.println("   perc_fact: " + perc_fact);
+		System.out.println("   IRI_DILUCION: " + iri_values[h][1]);
+    }
+
 	//////////////////////
 	// CALCULAR FA
 
@@ -779,35 +815,6 @@ GeoAlgorithm {
 	// CALCULAR ECOLOGICAL STATUS
 	System.out.println("-------------------------- CALCULE ECOLOGICAL STATUS");
 	final Object[][] dma_status_iri_array = calculateIRI_DMA_array(waterBodiesLyr);
-
-
-	//////////////////////
-	// CALCULAR HE
-	System.out.println("-------------------------- CALCULE HE");
-	final double iri_he = (double) (he_weight * perc_fact * HE_VALUE) / 100000;
-	System.out.println("   P_HE: " + he_weight);
-	System.out.println("   perc_fact: " + perc_fact);
-	System.out.println("   he: " + HE_VALUE);
-	System.out.println("   IRI_HE: " + iri_he);
-
-	//////////////////////
-	// CALCULAR DILUCION
-	System.out.println("-------------------------- CALCULE DILUTION");
-
-	double iri_dil = 0.0;
-	// Se calcula solamente para el punto de vertido (distancia = 0)
-	final double concentracion_max = getMaxConcentration(0, cmez, crio, WATERSHED_KM2, HE_VALUE);
-	System.out.println("   concentracion_max: " + concentracion_max);
-
-	if (concentracion_max >= 300) {
-	    iri_dil = 0.0;
-	}
-	else {
-	    iri_dil = (dil_weight * perc_fact / 100) * (1 - (concentracion_max / 300));
-	}
-	System.out.println("   dil_weight: " + dil_weight);
-	System.out.println("   perc_fact: " + perc_fact);
-	System.out.println("   IRI_DILUCION: " + iri_dil);
 
 
 	//////////////////////
@@ -881,43 +888,46 @@ GeoAlgorithm {
 	final IVectorLayer result2 = getNewVectorLayer("IRI_sumarize", Sextante.getText("IRI_sumarize_2010"),
 		IRISumarizeLayer.shapetype, IRISumarizeLayer.fieldTypes, IRISumarizeLayer.fieldNames);
 
-	final double[] attributes = new double[IRISumarizeLayer.fieldNames.length];
-
 	geom = firstfeature.getGeometry();
-	for (int i1 = 0; i1 < attributes.length; i1++) {
-	    attributes[i1] = 0.0;
-	}
 
 	for (int i1 = 0; i1 < iri_f1_array.length; i1++) {
-	    attributes[5] = attributes[5] + iri_f1_array[i1];
-	    attributes[6] = attributes[6] + iri_f2_array[i1];
-	    attributes[7] = attributes[7] + iri_f3_array[i1];
-	    attributes[8] = attributes[8] + iri_f4_array[i1];
-	    attributes[9] = attributes[9] + iri_f5_array[i1];
-	    attributes[10] = attributes[10] + iri_f6_array[i1];
-	    attributes[11] = attributes[11] + iri_f7_array[i1];
-	    attributes[12] = attributes[12] + iri_f8_array[i1];
-	    attributes[13] = attributes[13] + iri_f9_array[i1];
-	    attributes[14] = attributes[14] + iri_f10_array[i1];
-	    attributes[15] = attributes[15] + iri_f11_array[i1];
-	    //IRI_DMA
-	    attributes[1] = attributes[1] + (Double) dma_status_iri_array[1][i1];
+
+		iri_values[i1][2] =  iri_f1_array[i1];
+		iri_values[i1][2] +=  iri_f2_array[i1];
+		iri_values[i1][2] +=  iri_f3_array[i1];
+		iri_values[i1][2] +=  iri_f4_array[i1];
+		iri_values[i1][2] +=  iri_f5_array[i1];
+		iri_values[i1][2] +=  iri_f6_array[i1];
+		iri_values[i1][2] +=  iri_f7_array[i1];
+		iri_values[i1][2] +=  iri_f8_array[i1];
+		iri_values[i1][2] +=  iri_f9_array[i1];
+		iri_values[i1][2] +=  iri_f10_array[i1];
+		iri_values[i1][2] +=  iri_f11_array[i1];
+		iri_values[i1][3] = (Double) dma_status_iri_array[1][i1];
+
+		//IRI_FACT
+		iri_values[i1][4] = iri_values[i1][0] + iri_values[i1][1] + iri_values[i1][2];
+
+		//IRI TOTAL
+		iri_values[i1][5] = iri_values[i1][4] + iri_values[i1][3];
+
+		//IMPRIMO LOS DATOS COMO COMPROBACIÓN CUTRONGA
+		System.out.println("-------------------------- IRI VALUES FOR POINT " + i1);
+		System.out.println("--- HE: " + iri_values[i1][0]);
+		System.out.println("--- DIL: " + iri_values[i1][1]);
+		System.out.println("--- FA: " + iri_values[i1][2]);
+		System.out.println("--- DMA: " + iri_values[i1][3]);
+		System.out.println("--- FACT: " + iri_values[i1][4]);
+		System.out.println("--- TOTAL: " + iri_values[i1][5]);
 	}
 
-	//IRI_FACT
-	attributes[2] = sumArray(attributes, 3, 15);
-	//IRI_HE
-	attributes[3] = iri_he;
-	//IRI_DIL
-	attributes[4] = iri_dil;
 	//CUENCA
-	attributes[16] = WATERSHED_KM2;
-	//IRI
-	attributes[0] = attributes[1] + attributes[2];
+	//attributes[16] = WATERSHED_KM2;
 
-	final Object[] attr = new Object[attributes.length];
-	for (int i1 = 0; i1 < attributes.length; i1++) {
-	    attr[i1] = new Double(attributes[i1]);
+	//NO TENGO MUY CLARO CÓMO PRESENTARLOS, ESTO NO TIENE SENTIDO
+	final Object[] attr = new Object[iri_values.length];
+	for (int i1 = 0; i1 < iri_values.length; i1++) {
+	    attr[i1] = new Double(iri_values[i1][5]);
 	}
 
 	result2.addFeature(geom, attr);
@@ -1272,8 +1282,8 @@ GeoAlgorithm {
 	    final int dist_points,
 	    final int weight,
 	    final int percent_fact) {
-	final double value = ((double) (percent_fact * weight) / 100) * Math.exp(-0.0009 * xp);
-	return value;
+
+	return calculateIRI_polygon(xp, dist_points, weight, percent_fact);
     }
 
 
@@ -1291,24 +1301,11 @@ GeoAlgorithm {
 	    final int weight,
 	    final int percent_fact) {
 
-	double value = 0.0;
+    double he_xp = iri_values[xp/dist_points][0];
 	final double constant = -1.011233793;
 	final double dist_2 = ((double) dist_points / 2);
 	final double mul_fact1 = ((double) (percent_fact * weight) / 100);
-	if (xp == 0) {
-	    final double exp = Math.exp(-0.0009 * (xp + dist_2));
-	    value = mul_fact1 * (constant * (exp - 1));
-	}
-	else if (xp == 5000) {
-	    final double exp1 = Math.exp(-0.0009 * 5000);
-	    final double exp2 = Math.exp(-0.0009 * (xp - dist_2));
-	    value = mul_fact1 * (constant * (exp1 - exp2));
-	}
-	else {
-	    final double exp1 = Math.exp(-0.0009 * (xp + dist_2));
-	    final double exp2 = Math.exp(-0.0009 * (xp - dist_2));
-	    value = mul_fact1 * (constant * (exp1 - exp2));
-	}
+	double value = he_xp * (mul_fact1/he_weight);
 	return value;
     }
 
