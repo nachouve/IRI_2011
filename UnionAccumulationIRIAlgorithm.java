@@ -23,7 +23,6 @@ import java.util.ArrayList;
 
 import es.unex.sextante.additionalInfo.AdditionalInfoMultipleInput;
 import es.unex.sextante.additionalInfo.AdditionalInfoNumericalValue;
-import es.unex.sextante.additionalInfo.AdditionalInfoVectorLayer;
 import es.unex.sextante.core.AnalysisExtent;
 import es.unex.sextante.core.GeoAlgorithm;
 import es.unex.sextante.core.OutputObjectsSet;
@@ -39,6 +38,7 @@ import es.unex.sextante.gui.core.SextanteGUI;
 import es.unex.sextante.gui.modeler.ModelAlgorithmIO;
 import es.unex.sextante.gui.settings.SextanteModelerSettings;
 import es.unex.sextante.outputs.Output;
+import es.unex.sextante.outputs.OutputVectorLayer;
 import es.unex.sextante.parameters.Parameter;
 
 
@@ -80,7 +80,7 @@ GeoAlgorithm {
 	    String[] sValues = {"IRI", "IRI_DMA", "IRI_FACT"};
 	    m_Parameters.addSelection(IRI_TYPE, "Tipo de IRI a calcular", sValues );
 
-	    addOutputVectorLayer("RESULT_ACC_IRI", "RESULT_ACC_IRI", AdditionalInfoVectorLayer.SHAPE_TYPE_POLYGON);
+	    addOutputVectorLayer("RESULT_ACC_IRI", "RESULT_ACC_IRI", OutputVectorLayer.SHAPE_TYPE_POLYGON);
 
 	} catch (RepeatedParameterNameException e) {
 	    // TODO Auto-generated catch block
