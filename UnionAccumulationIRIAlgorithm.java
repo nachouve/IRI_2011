@@ -147,11 +147,7 @@ GeoAlgorithm {
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"test_create_graticule.model");
 
-	AnalysisExtent ext = new AnalysisExtent();
-
-	ext.setCellSize(cell_size);
-	ext.setXRange(extent2D.getMinX(), extent2D.getMaxX(), false);
-	ext.setYRange(extent2D.getMinY(), extent2D.getMaxY(), true);
+	AnalysisExtent ext = getEnlargedExtend(full_extent2D, cell_size);
 	geomodel.setAnalysisExtent(ext);
 
 	ParametersSet params = geomodel.getParameters();
@@ -184,6 +180,30 @@ GeoAlgorithm {
 	}
 
 	return !m_Task.isCanceled();
+    }
+
+    private AnalysisExtent getEnlargedExtend(Rectangle2D extent, int size){
+
+	int diff = 2;
+	AnalysisExtent ext = new AnalysisExtent();
+
+	ext.setCellSize(size);
+	ext.setXRange(enlarge(extent.getMinX(), size, -diff),
+		enlarge(extent.getMaxX(), size, diff),
+		false);
+	ext.setYRange(enlarge(extent.getMinY(), size, diff),
+		enlarge(extent.getMaxY(), size, diff),
+		true);
+
+	return ext;
+    }
+
+    private double enlarge(double value, int div, int diff){
+	double v = 0;
+	int p = (int) (value/div);
+	p = p + diff;
+	v = div * p;
+	return v;
     }
 
 }
