@@ -513,7 +513,7 @@ GeoAlgorithm {
 
 	demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
 
-	final ChannelNetworkAlgorithm algCN = new ChannelNetworkAlgorithm();
+	final IRIChannelNetworkAlgorithm algCN = new IRIChannelNetworkAlgorithm();
 	params = algCN.getParameters();
 	params.getParameter(ChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
 	params.getParameter(ChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
@@ -532,15 +532,25 @@ GeoAlgorithm {
 	bSucess = algCN.execute(m_Task, m_OutputFactory);
 	IVectorLayer resultNetwork = null;
 
+
 	if (bSucess) {
-	    //output = oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT);
-	    //m_OutputObjects.getOutput(RESULT).setOutputObject(output.getOutputObject());
+	    resultNetwork = (IVectorLayer) oo.getOutput(IRIChannelNetworkAlgorithm.NETWORKVECT).getOutputObject();
 
-	    resultNetwork = (IVectorLayer) oo.getOutput(ChannelNetworkAlgorithm.NETWORKVECT).getOutputObject();
+	    // We create the a newVectorLayer (needed to do properly the output)
+	    IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
+		    resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
 
-	    //resultNetwork.open();
-	    m_OutputObjects.getOutput("RESULT_network").setOutputObject(resultNetwork);
-	    //return true;
+	    resultNetwork.open();
+	    IFeatureIterator it = resultNetwork.iterator();
+	    for (; it.hasNext();){
+		aux.addFeature(it.next());
+		// And copy just the first channel
+		break;
+	    }
+	    resultNetwork.close();
+
+	    m_OutputObjects.getOutput("RESULT_network").setOutputObject(aux);
+
 	}
 	else {
 	    return false;
@@ -709,13 +719,11 @@ GeoAlgorithm {
 		    Output o = outputs.getOutput(j);
 		    System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
 		    if (o.getDescription().equalsIgnoreCase("Intersection")){
-			if (o.getTypeDescription().equalsIgnoreCase("vector")) {
-			    networkRing_lyr = (IVectorLayer) o.getOutputObject();
-			    networkRing_lyr.open();
-			    System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
-			    m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
-			    networkRing_lyr.close();
-			}
+			networkRing_lyr = (IVectorLayer) o.getOutputObject();
+			networkRing_lyr.open();
+			System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
+			m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
+			networkRing_lyr.close();
 		    }
 		}
 	    } else {
@@ -756,7 +764,6 @@ GeoAlgorithm {
 	extent.setCellSize(25.);
 
 	//extent.enlargeOneCell();
-
 	accflow.open();
 	accflow.setWindowExtent(extent);
 
@@ -850,7 +857,7 @@ GeoAlgorithm {
 	/////////////////////////////////
 	// 2.- Puntos en el mar
 	Geometry[] geoms = getGeometriesOnSameDirection(network_lyr, num_coastal_rings, sample_dist);
-	System.out.println("******************* Puntos Te�ricos en el mar: " + geoms.length);
+	System.out.println("******************* Puntos Teoricos en el mar: " + geoms.length);
 
 	for (int k = 0; k < geoms.length; ii1++, k++) {
 	    geom = geoms[k];
@@ -978,9 +985,9 @@ GeoAlgorithm {
 	    int num_rings = 0;
 
 	    if (coastal_rings){
-		network_lyr.open();
-		num_rings = network_lyr.getShapesCount();
-		network_lyr.close();
+		networkRing_lyr.open();
+		num_rings = networkRing_lyr.getShapesCount();
+		networkRing_lyr.close();
 	    }
 
 	    final IFeatureIterator iter1 = factLyr.iterator();
@@ -1043,8 +1050,8 @@ GeoAlgorithm {
 		    }
 
 		    // Now coastal rings, if exists
-		    if (k <= num_points && coastal_rings) {
-			for (; iter3.hasNext(); k++){
+		    if (k < num_points && coastal_rings) {
+			for (; k < num_points && iter3.hasNext(); k++){
 			    final IFeature feat3 = iter3.next();
 			    if (feat3 == null) {
 				continue;

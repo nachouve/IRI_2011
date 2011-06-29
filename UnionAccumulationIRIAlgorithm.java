@@ -145,7 +145,7 @@ GeoAlgorithm {
 	}
 
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
-	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"test_create_graticule.model");
+	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"create_graticule.model");
 
 	AnalysisExtent ext = getEnlargedExtend(full_extent2D, cell_size);
 	geomodel.setAnalysisExtent(ext);
@@ -179,6 +179,38 @@ GeoAlgorithm {
 	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
 
+
+	//IVectorLayer.SHAPE_TYPE_POLYGON;
+
+	String[] fieldNames = new String[(iri_lyrs.length*4) + 1];
+	Class[]  fieldTypes = new Class[(iri_lyrs.length*4) + 1];
+
+	fieldNames[0] = "IRI";
+	fieldTypes[0] = Double.class;
+	int c_ascii = 'A';
+	for (int i = 1; i < iri_lyrs.length; ){
+
+	    fieldNames[i] = String.valueOf((char)c_ascii)+"_IRI";
+	    fieldTypes[i++] = Double.class;
+	    fieldNames[i] = "IRI";
+	    fieldTypes[i++] = Double.class;
+	    fieldNames[i] = "IRI";
+	    fieldTypes[i++] = Double.class;
+
+	    c_ascii++;
+	}
+
+	//	IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
+	//		resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
+
+
+	for (int i = 0; i < iri_lyrs.length; i++) {
+	    IVectorLayer acc_iri = iri_lyrs[i];
+	    acc_iri.open();
+
+	    acc_iri.close();
+	}
+
 	return !m_Task.isCanceled();
     }
 
@@ -191,7 +223,7 @@ GeoAlgorithm {
 	ext.setXRange(enlarge(extent.getMinX(), size, -diff),
 		enlarge(extent.getMaxX(), size, diff),
 		false);
-	ext.setYRange(enlarge(extent.getMinY(), size, diff),
+	ext.setYRange(enlarge(extent.getMinY(), size, -diff),
 		enlarge(extent.getMaxY(), size, diff),
 		true);
 
