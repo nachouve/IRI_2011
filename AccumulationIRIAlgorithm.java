@@ -48,7 +48,6 @@ import es.unex.sextante.exceptions.WrongParameterTypeException;
 import es.unex.sextante.gui.core.SextanteGUI;
 import es.unex.sextante.gui.modeler.ModelAlgorithmIO;
 import es.unex.sextante.gui.settings.SextanteModelerSettings;
-import es.unex.sextante.hydrology.channelNetwork.ChannelNetworkAlgorithm;
 import es.unex.sextante.outputs.FileOutputChannel;
 import es.unex.sextante.outputs.Output;
 import es.unex.sextante.parameters.Parameter;
@@ -331,7 +330,7 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(perc_FACT, "Importancia relativa de IRI_fact", 60,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    //Pesos seg�n el estado ecol�gico
+	    //Pesos segun el estado ecologico
 	    m_Parameters.addNumericalValue("ecoW_E", "ecoW_E", 100, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 	    m_Parameters.addNumericalValue("ecoW_D", "ecoW_D", 64, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 	    m_Parameters.addNumericalValue("ecoW_C", "ecoW_C", 20, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
@@ -514,12 +513,12 @@ GeoAlgorithm {
 
 	demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
 
-	final ChannelNetworkAlgorithm algCN = new ChannelNetworkAlgorithm();
+	final IRIChannelNetworkAlgorithm algCN = new IRIChannelNetworkAlgorithm();
 	params = algCN.getParameters();
-	params.getParameter(ChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
-	params.getParameter(ChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
-	params.getParameter(ChannelNetworkAlgorithm.THRESHOLD).setParameterValue(0);
-	params.getParameter(ChannelNetworkAlgorithm.METHOD).setParameterValue(0); //Usar ChannelNetworkAlgorithm.METHOD_GREATER_THAN
+	params.getParameter(IRIChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
+	params.getParameter(IRIChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
+	params.getParameter(IRIChannelNetworkAlgorithm.THRESHOLD).setParameterValue(0);
+	params.getParameter(IRIChannelNetworkAlgorithm.METHOD).setParameterValue(0); //Usar ChannelNetworkAlgorithm.METHOD_GREATER_THAN
 
 	oo = algCN.getOutputObjects();
 
@@ -535,6 +534,7 @@ GeoAlgorithm {
 
 	if (bSucess) {
 
+	    resultNetwork = (IVectorLayer) algCN.getOutputObjects().getOutput(algCN.NETWORKVECT).getOutputObject();
 	    // We create the a newVectorLayer (needed to do properly the output)
 	    IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
 		    resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
@@ -659,8 +659,8 @@ GeoAlgorithm {
 	// COASTAL RINGS
 
 	// See if the waste_water_spill affects a coastal sector
-	// Primero se calcula con anillos (cortados s�lo en la zonas de mar)
-	// Luego se crean puntos (siguiendo la direcci�n y sentido del r�o en tierra) para la representaci�n final
+	// Primero se calcula con anillos (cortados solo en la zonas de mar)
+	// Luego se crean puntos (siguiendo la direccion y sentido del rio en tierra) para la representacion final
 
 	network_lyr.open();
 
@@ -886,8 +886,14 @@ GeoAlgorithm {
 
 	/////////////////////////////////
 	// 2.- Puntos en el mar
-	Geometry[] geoms = getGeometriesOnSameDirection(network_lyr, num_coastal_rings, sample_dist);
-	System.out.println("******************* Puntos Teoricos en el mar: " + geoms.length);
+	Geometry[] geoms = null;
+	try {
+	    geoms = getGeometriesOnSameDirection(network_lyr, num_coastal_rings, sample_dist);
+	    System.out.println("******************* Puntos Teoricos en el mar: " + geoms.length);
+	} catch (NullPointerException e) {
+	    System.out.println("POSIBLE ERROR: There is no points on the Channel Network??");
+	    e.printStackTrace();
+	}
 
 	for (int k = 0; k < geoms.length; ii1++, k++) {
 	    geom = geoms[k];
@@ -1378,16 +1384,17 @@ GeoAlgorithm {
 
 	double dx = 0;
 	double dy = 0;
-	if ((p1 != null) && (p2 != null)){
-	    double x = p2.x - p1.x;
-	    double y = p2.y - p1.y;
-	    double module = Math.sqrt(x*x+y*y);
-	    dx = (dist * x)/module ;
-	    dy = (dist * y)/module;
+	if ((p1 == null) || (p2 == null)){
+	    return null;
 	}
+	double x = p2.x - p1.x;
+	double y = p2.y - p1.y;
+	double module = Math.sqrt(x*x+y*y);
+	dx = (dist * x)/module ;
+	dy = (dist * y)/module;
 
-	double x = p2.x;
-	double y = p2.y;
+	x = p2.x;
+	y = p2.y;
 	GeometryFactory gf = new GeometryFactory();
 	for (int i = 0; i < num_geoms; i++){
 	    x = x + dx;

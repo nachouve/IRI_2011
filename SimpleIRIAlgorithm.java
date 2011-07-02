@@ -1376,16 +1376,17 @@ GeoAlgorithm {
 
 	double dx = 0;
 	double dy = 0;
-	if ((p1 != null) && (p2 != null)){
-	    double x = p2.x - p1.x;
-	    double y = p2.y - p1.y;
-	    double module = Math.sqrt(x*x+y*y);
-	    dx = (dist * x)/module ;
-	    dy = (dist * y)/module;
+	if ((p1 == null) || (p2 == null)){
+	    return null;
 	}
+	double x = p2.x - p1.x;
+	double y = p2.y - p1.y;
+	double module = Math.sqrt(x*x+y*y);
+	dx = (dist * x)/module ;
+	dy = (dist * y)/module;
 
-	double x = p2.x;
-	double y = p2.y;
+	x = p2.x;
+	y = p2.y;
 	GeometryFactory gf = new GeometryFactory();
 	for (int i = 0; i < num_geoms; i++){
 	    x = x + dx;
