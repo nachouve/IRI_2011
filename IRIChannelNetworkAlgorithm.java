@@ -213,12 +213,12 @@ GeoAlgorithm {
 
 	do {
 	    m_Network.setCellValue(x, y, -1);
-	    System.out.println(x + "," + y +": " + m_DEM.getCellValueAsFloat(x, y));
+	    System.out.println("From (" + x + "," + y +") : " + m_DEM.getCellValueAsFloat(x, y));
 	    iDirection = getDirToNextLowestCell(m_DEM, x, y, true, iDirection);
 	    if (iDirection >= 0) {
 		x = x + m_iOffsetX[iDirection];
 		y = y + m_iOffsetY[iDirection];
-		System.out.println("Move to: " + x + "," + y +" --> " + m_DEM.getCellValueAsFloat(x, y));
+		System.out.println("T: (" + x + ",)" + y +" --> " + m_DEM.getCellValueAsFloat(x, y));
 	    }
 	    else {
 		bContinue = false;
@@ -306,7 +306,7 @@ GeoAlgorithm {
 	    }
 	    else {
 		dValue = z2;
-		System.out.println("z: " + z +" z2: " + z2 + ":  lastDir" + lastDirection + " -- checking to: " + i);
+		System.out.println(" -- checking to: " + i  +  "current_cell: " + z +" checking: " + z2 + ":  lastDir" + lastDirection);
 		if (dValue <= dMinCell) {
 		    iDir = i;
 		    dMinCell = dValue;
@@ -399,78 +399,78 @@ GeoAlgorithm {
     //
     //    }
 
-    private void createVectorLayer() throws GeoAlgorithmExecutionException {
-
-	int i;
-	int x, y;
-	int ix, iy;
-	int iDirection;
-	int iIndexDownslope = -1;
-	int iOrder;
-	boolean bContinue;
-	double dLength;
-	Point2D pt;
-	GridCell cell;
-	ArrayList coordsList;
-	final AnalysisExtent extent = m_DEM.getWindowGridExtent();
-	final Object[] values = new Object[4];
-
-	final String sNames[] = { Sextante.getText("ID"), Sextante.getText("Length"), Sextante.getText("Order"),
-		Sextante.getText("Next") };
-	final Class[] types = { Integer.class, Double.class, Integer.class, Integer.class };
-
-	final IVectorLayer network = getNewVectorLayer(NETWORKVECT, Sextante.getText("Channel_network"),
-		IVectorLayer.SHAPE_TYPE_LINE, types, sNames);
-	final Object[] headers = m_HeadersAndJunctions.toArray();
-	Arrays.sort(headers);
-
-	setProgressText(Sextante.getText("Creating_vector_layer"));
-	for (i = headers.length - 1; (i > -1) && setProgress(headers.length - i, headers.length); i--) {
-	    cell = (GridCell) headers[i];
-	    x = cell.getX();
-	    y = cell.getY();
-	    coordsList = new ArrayList();
-	    pt = extent.getWorldCoordsFromGridCoords(cell);
-	    coordsList.add(new Coordinate(pt.getX(), pt.getY()));
-	    dLength = 0;
-	    iOrder = m_Network.getCellValueAsInt(x, y);
-	    bContinue = true;
-	    do {
-		iDirection = m_DEM.getDirToNextDownslopeCell(x, y);
-		if (iDirection >= 0) {
-		    ix = x + m_iOffsetX[iDirection];
-		    iy = y + m_iOffsetY[iDirection];
-		    cell = new GridCell(ix, iy, m_DEM.getCellValueAsDouble(ix, iy));
-		    pt = extent.getWorldCoordsFromGridCoords(cell);
-		    coordsList.add(new Coordinate(pt.getX(), pt.getY()));
-		    dLength += m_DEM.getDistToNeighborInDir(iDirection);
-		    iIndexDownslope = m_HeadersAndJunctions.indexOf(cell);
-		    if (iIndexDownslope != -1) {
-			bContinue = false;
-		    }
-		    x = ix;
-		    y = iy;
-		}
-		else {
-		    bContinue = false;
-		}
-
-	    }
-	    while (bContinue && !m_Task.isCanceled());
-
-	    values[0] = new Integer(i);
-	    values[1] = new Double(dLength);
-	    values[2] = new Integer(iOrder);
-	    values[3] = new Integer(iIndexDownslope);
-
-	    final Coordinate coords[] = new Coordinate[coordsList.size()];
-	    for (int j = 0; j < coords.length; j++) {
-		coords[j] = (Coordinate) coordsList.get(j);
-	    }
-	    final Geometry geom = new GeometryFactory().createLineString(coords);
-	    network.addFeature(geom, values);
-	}
-    }
+    //    private void createVectorLayer() throws GeoAlgorithmExecutionException {
+    //
+    //	int i;
+    //	int x, y;
+    //	int ix, iy;
+    //	int iDirection;
+    //	int iIndexDownslope = -1;
+    //	int iOrder;
+    //	boolean bContinue;
+    //	double dLength;
+    //	Point2D pt;
+    //	GridCell cell;
+    //	ArrayList coordsList;
+    //	final AnalysisExtent extent = m_DEM.getWindowGridExtent();
+    //	final Object[] values = new Object[4];
+    //
+    //	final String sNames[] = { Sextante.getText("ID"), Sextante.getText("Length"), Sextante.getText("Order"),
+    //		Sextante.getText("Next") };
+    //	final Class[] types = { Integer.class, Double.class, Integer.class, Integer.class };
+    //
+    //	final IVectorLayer network = getNewVectorLayer(NETWORKVECT, Sextante.getText("Channel_network"),
+    //		IVectorLayer.SHAPE_TYPE_LINE, types, sNames);
+    //	final Object[] headers = m_HeadersAndJunctions.toArray();
+    //	Arrays.sort(headers);
+    //
+    //	setProgressText(Sextante.getText("Creating_vector_layer"));
+    //	for (i = headers.length - 1; (i > -1) && setProgress(headers.length - i, headers.length); i--) {
+    //	    cell = (GridCell) headers[i];
+    //	    x = cell.getX();
+    //	    y = cell.getY();
+    //	    coordsList = new ArrayList();
+    //	    pt = extent.getWorldCoordsFromGridCoords(cell);
+    //	    coordsList.add(new Coordinate(pt.getX(), pt.getY()));
+    //	    dLength = 0;
+    //	    iOrder = m_Network.getCellValueAsInt(x, y);
+    //	    bContinue = true;
+    //	    do {
+    //		iDirection = m_DEM.getDirToNextDownslopeCell(x, y);
+    //		if (iDirection >= 0) {
+    //		    ix = x + m_iOffsetX[iDirection];
+    //		    iy = y + m_iOffsetY[iDirection];
+    //		    cell = new GridCell(ix, iy, m_DEM.getCellValueAsDouble(ix, iy));
+    //		    pt = extent.getWorldCoordsFromGridCoords(cell);
+    //		    coordsList.add(new Coordinate(pt.getX(), pt.getY()));
+    //		    dLength += m_DEM.getDistToNeighborInDir(iDirection);
+    //		    iIndexDownslope = m_HeadersAndJunctions.indexOf(cell);
+    //		    if (iIndexDownslope != -1) {
+    //			bContinue = false;
+    //		    }
+    //		    x = ix;
+    //		    y = iy;
+    //		}
+    //		else {
+    //		    bContinue = false;
+    //		}
+    //
+    //	    }
+    //	    while (bContinue && !m_Task.isCanceled());
+    //
+    //	    values[0] = new Integer(i);
+    //	    values[1] = new Double(dLength);
+    //	    values[2] = new Integer(iOrder);
+    //	    values[3] = new Integer(iIndexDownslope);
+    //
+    //	    final Coordinate coords[] = new Coordinate[coordsList.size()];
+    //	    for (int j = 0; j < coords.length; j++) {
+    //		coords[j] = (Coordinate) coordsList.get(j);
+    //	    }
+    //	    final Geometry geom = new GeometryFactory().createLineString(coords);
+    //	    network.addFeature(geom, values);
+    //	}
+    //    }
 
     private void createRiverFromHeaderLayer() throws GeoAlgorithmExecutionException {
 
@@ -501,7 +501,8 @@ GeoAlgorithm {
 	Arrays.sort(headers);
 
 	setProgressText(Sextante.getText("Creating_vector_layer"));
-	//TODO only onle header!!
+
+	//TODO CLEAN CODE because there is a unique header!!!!!!
 	for (i = headers.length - 1; (i > -1) && setProgress(headers.length - i, headers.length); i--) {
 	    System.out.println(">>>>>>>>>>>>> headers.length: " + headers.length);
 	    cell = (GridCell) headers[i];
