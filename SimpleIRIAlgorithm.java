@@ -48,7 +48,6 @@ import es.unex.sextante.exceptions.WrongParameterTypeException;
 import es.unex.sextante.gui.core.SextanteGUI;
 import es.unex.sextante.gui.modeler.ModelAlgorithmIO;
 import es.unex.sextante.gui.settings.SextanteModelerSettings;
-import es.unex.sextante.hydrology.channelNetwork.ChannelNetworkAlgorithm;
 import es.unex.sextante.outputs.FileOutputChannel;
 import es.unex.sextante.outputs.Output;
 import es.unex.sextante.parameters.Parameter;
@@ -361,6 +360,8 @@ GeoAlgorithm {
 
 	try {
 
+	    demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
+
 	    vertidoLyr = m_Parameters.getParameterValueAsVectorLayer(VERTIDO);
 	    final int he_idx = m_Parameters.getParameterValueAsInt(HE_ATTRIB);
 
@@ -511,50 +512,67 @@ GeoAlgorithm {
 	//////////////////////
 	// CHANNEL NETWORK
 
-	demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
+	//Load model
+	String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
+	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"iri_channel_step1.model");
 
-	final IRIChannelNetworkAlgorithm algCN = new IRIChannelNetworkAlgorithm();
-	params = algCN.getParameters();
-	params.getParameter(ChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
-	params.getParameter(ChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
-	params.getParameter(ChannelNetworkAlgorithm.THRESHOLD).setParameterValue(0);
-	params.getParameter(ChannelNetworkAlgorithm.METHOD).setParameterValue(0); //Usar ChannelNetworkAlgorithm.METHOD_GREATER_THAN
+	geomodel.setAnalysisExtent(extent);
 
-	oo = algCN.getOutputObjects();
+	params = geomodel.getParameters();
 
-	extent = new AnalysisExtent(vertidoLyr);
+	for (int j=0; j < params.getNumberOfParameters(); j++) {
+	    Parameter p = params.getParameter(j);
+	    if (p.getParameterDescription().equalsIgnoreCase("Punto")){
+		params.getParameter(j).setParameterValue(vertidoLyr);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("MDT")){
+		params.getParameter(j).setParameterValue(demLyr);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("pto_rasterized")){
+		params.getParameter(j).setParameterValue(resultRasterize);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("Angle_slope")){
+		params.getParameter(j).setParameterValue(2.0);
+	    }
+	}
+
+	//	demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
+	//
+	//	final IRIChannelNetworkAlgorithm algCN = new IRIChannelNetworkAlgorithm();
+	//	params = algCN.getParameters();
+	//	params.getParameter(ChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
+	//	params.getParameter(ChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
+	//	params.getParameter(ChannelNetworkAlgorithm.THRESHOLD).setParameterValue(0);
+	//	params.getParameter(ChannelNetworkAlgorithm.METHOD).setParameterValue(0); //Usar ChannelNetworkAlgorithm.METHOD_GREATER_THAN
+
+	oo = geomodel.getOutputObjects();
+
+	extent = new AnalysisExtent(demLyr);
 	extent.setCellSize(25.);
 	extent.enlargeOneCell();
 
-	algCN.setAnalysisExtent(extent);
+	geomodel.setAnalysisExtent(extent);
 	System.out.println("-------------------------- CHANNEL NETWORK");
 
-	bSucess = algCN.execute(m_Task, m_OutputFactory);
+	bSucess = geomodel.execute(m_Task, m_OutputFactory);
 	IVectorLayer resultNetwork = null;
 
-
 	if (bSucess) {
-	    resultNetwork = (IVectorLayer) oo.getOutput(IRIChannelNetworkAlgorithm.NETWORKVECT).getOutputObject();
 
-	    // We create the a newVectorLayer (needed to do properly the output)
-	    IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
-		    resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
+	    OutputObjectsSet outputs = geomodel.getOutputObjects();
 
-	    resultNetwork.open();
-	    IFeatureIterator it = resultNetwork.iterator();
-	    for (; it.hasNext();){
-		aux.addFeature(it.next());
-		// And copy just the first channel
-		break;
+	    for (int j = 0; j < outputs.getOutputLayersCount(); j++) {
+		Output o = outputs.getOutput(j);
+		System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
+		if (o.getDescription().equalsIgnoreCase("IRI_river")){
+		    resultNetwork = (IVectorLayer) o.getOutputObject();
+		    resultNetwork.open();
+		    System.out.println("resultNetwork.feats: " +  resultNetwork.getShapesCount());
+		    m_OutputObjects.getOutput("RESULT_network").setOutputObject(resultNetwork);
+		    resultNetwork.close();
+		}
 	    }
-	    resultNetwork.close();
-
-	    m_OutputObjects.getOutput("RESULT_network").setOutputObject(aux);
-
+	} else {
+	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
-	else {
-	    return false;
-	}
+
 
 	//To avoid more than one network
 	resultNetwork.addFilter(new FirstFeaturesVectorFilter(1));
@@ -662,11 +680,11 @@ GeoAlgorithm {
 	// See if the waste_water_spill affects a coastal sector
 	// Primero se calcula con anillos (cortados s�lo en la zonas de mar)
 	// Luego se crean puntos (siguiendo la direcci�n y sentido del r�o en tierra) para la representaci�n final
-
+	networkRing_lyr = null;
 	network_lyr.open();
 
 	int num_points_network = network_lyr.getShapesCount();
-	if (num_points_network > 0 && num_points_network <= num_points ) {
+	if (num_points_network > 0 && num_points_network < num_points ) {
 	    System.out.println("-------------------------- COASTAL RINGS ARE NECESSARY -------------------------- "
 		    +  num_points_network);
 
@@ -688,8 +706,8 @@ GeoAlgorithm {
 	    extent.setCellSize(20.);
 
 	    //Load model
-	    final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
-	    GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
+	    modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
+	    geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
 
 	    geomodel.setAnalysisExtent(extent);
 
@@ -735,14 +753,16 @@ GeoAlgorithm {
 	network_lyr.close();
 	network_lyr.removeFilters();
 
-	//S� que el valor que me interesa del mar es el �ltimo attribute
-	int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
-	networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
-	networkRing_lyr.open();
-	System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
-	networkRing_lyr.close();
+	//S� que el valor que me interesa del mar es el ultimo attribute
+	if (networkRing_lyr != null) {
+	    int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
 
+	    networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
+	    networkRing_lyr.open();
+	    System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
+	    networkRing_lyr.close();
 
+	}
 	// END COASTAL
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1076,7 +1096,9 @@ GeoAlgorithm {
 		}
 		iter1.close();
 		iter2.close();
-		iter3.close();
+		if (iter3 != null) {
+		    iter3.close();
+		}
 	    }
 
 	    for (int h = 0; h < num_points; h++) {

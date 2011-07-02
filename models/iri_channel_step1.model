@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>
+	<model name="iri_channel_step1" group="Models">
+		<algorithm key="PROC2" alg_cmd_line_name="fixeddistancebuffer" coords="113,16,155,59">
+			<assignment key="LAYER" assigned_to="INPUT1" />
+			<assignment key="DISTANCE" assigned_to="INNERPARAM0PROC2" />
+			<assignment key="TYPES" assigned_to="INNERPARAM1PROC2" />
+			<assignment key="RINGS" assigned_to="INNERPARAM2PROC2" />
+			<assignment key="NOTROUNDED" assigned_to="INNERPARAM3PROC2" />
+		</algorithm>
+		<algorithm key="PROC3" alg_cmd_line_name="clipbboxgrid" coords="120,131,145,59">
+			<assignment key="INPUT" assigned_to="INPUT0" />
+			<assignment key="POLYGONS" assigned_to="RESULTPROC2" />
+		</algorithm>
+		<algorithm key="PROC6" alg_cmd_line_name="fillsinks" coords="132,225,92,59">
+			<assignment key="MINSLOPE" assigned_to="INPUT2" />
+			<assignment key="DEM" assigned_to="RESULTPROC3" />
+		</algorithm>
+		<algorithm key="PROC4" alg_cmd_line_name="irichannelnetwork" coords="307,261,155,59">
+			<assignment key="THRESHOLD" assigned_to="INNERPARAM1PROC4" />
+			<assignment key="THRESHOLDLAYER" assigned_to="INPUT3" />
+			<assignment key="METHOD" assigned_to="INNERPARAM0PROC4" />
+			<assignment key="DEM" assigned_to="RESULTPROC6" />
+		</algorithm>
+		<input name="INPUT0" description="MDT" tooltip="" class="class es.unex.sextante.parameters.ParameterRasterLayer" coords="20,20,53,59">
+			<attribute name="mandatory" value="true" />
+		</input>
+		<input name="INPUT1" description="Punto" tooltip="" class="class es.unex.sextante.parameters.ParameterVectorLayer" coords="337,16,60,59">
+			<attribute name="mandatory" value="true" />
+			<attribute name="shape_type" value="0" />
+		</input>
+		<input name="INPUT2" description="Angle_slope" tooltip="" class="class es.unex.sextante.parameters.ParameterNumericalValue" coords="0,127,100,59">
+			<attribute name="min" value="0.01" />
+			<attribute name="max" value="5.0" />
+			<attribute name="default" value="0.01" />
+			<attribute name="type" value="2" />
+		</input>
+		<input name="INPUT3" description="pto_rasterized" tooltip="" class="class es.unex.sextante.parameters.ParameterRasterLayer" coords="328,103,113,59">
+			<attribute name="mandatory" value="true" />
+		</input>
+		<output key="NETWORKVECTPROC4" class="class es.unex.sextante.outputs.OutputVectorLayer" description="IRI_river" />
+		<data_object key="INNERPARAM0PROC2" value="5000.0" description="Numerical Value" />
+		<data_object key="INNERPARAM0PROC6" value="1.0" description="Numerical Value" />
+		<data_object key="NETWORKPROC4" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Channel network" from IRI_Channel_network' />
+		<data_object key="INNERPARAM0PROC4" value="0" description="Selection" />
+		<data_object key="RESULTPROC2" value="class es.unex.sextante.modeler.elements.ModelElementVectorLayer,2" description='"Buffer" from Fixed distance buffer' />
+		<data_object key="INNERPARAM2PROC2" value="1.0" description="Numerical Value" />
+		<data_object key="INNERPARAM3PROC2" value="false" description="Boolean" />
+		<data_object key="INNERPARAM1PROC4" value="0.0" description="Numerical Value" />
+		<data_object key="RESULTPROC6" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Result(preprocessed)" from Sink filling' />
+		<data_object key="INNERPARAM1PROC2" value="0" description="Selection" />
+		<data_object key="NETWORKVECTPROC4" value="class es.unex.sextante.modeler.elements.ModelElementVectorLayer,1" description='"Channel network" from IRI_Channel_network' />
+		<data_object key="RESULTPROC3" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Clipped layer" from Clip grid with bbox' />
+	</model>
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>
