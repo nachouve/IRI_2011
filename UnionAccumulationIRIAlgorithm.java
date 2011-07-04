@@ -21,12 +21,17 @@ package es.udc.sextante.gridAnalysis.IRI;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
+import com.vividsolutions.jts.geom.Geometry;
+
 import es.unex.sextante.additionalInfo.AdditionalInfoMultipleInput;
 import es.unex.sextante.additionalInfo.AdditionalInfoNumericalValue;
 import es.unex.sextante.core.AnalysisExtent;
 import es.unex.sextante.core.GeoAlgorithm;
 import es.unex.sextante.core.OutputObjectsSet;
 import es.unex.sextante.core.ParametersSet;
+import es.unex.sextante.dataObjects.IFeature;
+import es.unex.sextante.dataObjects.IFeatureIterator;
+import es.unex.sextante.dataObjects.IRecord;
 import es.unex.sextante.dataObjects.IVectorLayer;
 import es.unex.sextante.exceptions.GeoAlgorithmExecutionException;
 import es.unex.sextante.exceptions.NullParameterAdditionalInfoException;
@@ -179,22 +184,24 @@ GeoAlgorithm {
 	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
 
-
 	//IVectorLayer.SHAPE_TYPE_POLYGON;
-
-	String[] fieldNames = new String[(iri_lyrs.length*4) + 1];
-	Class[]  fieldTypes = new Class[(iri_lyrs.length*4) + 1];
+	//GENERATE FIELD/COLUMN ON THE RESULT
+	String[] fieldNames = new String[(iri_lyrs.length * 5) + 1];
+	Class[]  fieldTypes = new Class[(iri_lyrs.length * 5) + 1];
 
 	fieldNames[0] = "IRI";
 	fieldTypes[0] = Double.class;
-	int c_ascii = 'A';
+	char c_ascii = 'A';
 	for (int i = 1; i < iri_lyrs.length; ){
-
-	    fieldNames[i] = String.valueOf((char)c_ascii)+"_IRI";
+	    fieldNames[i] = String.valueOf(c_ascii)+"_vertido";
+	    fieldTypes[i++] = String.class;
+	    fieldNames[i] = String.valueOf(c_ascii)+"_xp";
+	    fieldTypes[i++] = Integer.class;
+	    fieldNames[i] = String.valueOf(c_ascii)+"_IRI";
 	    fieldTypes[i++] = Double.class;
-	    fieldNames[i] = "IRI";
+	    fieldNames[i] = String.valueOf(c_ascii)+"_IRI_fact";
 	    fieldTypes[i++] = Double.class;
-	    fieldNames[i] = "IRI";
+	    fieldNames[i] = String.valueOf(c_ascii)+"_IRI_dma";
 	    fieldTypes[i++] = Double.class;
 
 	    c_ascii++;
@@ -203,11 +210,25 @@ GeoAlgorithm {
 	//	IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
 	//		resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
 
-
+	System.out.println("==============  START DETECTING IRI ACCUMUTATION POINTS ON THE GRID =========");
 	for (int i = 0; i < iri_lyrs.length; i++) {
 	    IVectorLayer acc_iri = iri_lyrs[i];
+	    System.out.println(" ---- "+ acc_iri.getName() +" ----");
 	    acc_iri.open();
-
+	    IFeatureIterator iter = acc_iri.iterator();
+	    for (;iter.hasNext();){
+		IFeature iri_feat = iter.next();
+		Geometry iri_geom = iri_feat.getGeometry();
+		IRecord iri_record = iri_feat.getRecord();
+		graticule.open();
+		IFeatureIterator g_iter = graticule.iterator();
+		boolean found = false;
+		for (;g_iter.hasNext() && found;){
+		    IFeature cell = g_iter.next();
+		    Geometry geom = cell.getGeometry();
+		    //geom.covers(g)
+		}
+	    }
 	    acc_iri.close();
 	}
 

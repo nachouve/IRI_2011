@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>
+	<model name="rio_horadado" group="Models">
+		<algorithm key="PROC1" alg_cmd_line_name="rasterizevectorlayer" coords="60,235,157,59">
+			<assignment key="LAYER" assigned_to="INPUT4" />
+			<assignment key="FIELD" assigned_to="INNERPARAM0PROC1" />
+		</algorithm>
+		<algorithm key="PROC2" alg_cmd_line_name="reclassify" coords="212,315,86,59">
+			<assignment key="INPUT" assigned_to="RESULTPROC1" />
+			<assignment key="LUT" assigned_to="INNERPARAM1PROC2" />
+			<assignment key="METHOD" assigned_to="INNERPARAM0PROC2" />
+		</algorithm>
+		<algorithm key="PROC3" alg_cmd_line_name="minus" coords="368,142,40,59">
+			<assignment key="LAYER" assigned_to="INPUT1" />
+			<assignment key="LAYER2" assigned_to="RECLASSPROC2" />
+		</algorithm>
+		<input name="INPUT1" description="MDT" tooltip="" class="class es.unex.sextante.parameters.ParameterRasterLayer" coords="278,19,53,59">
+			<attribute name="mandatory" value="true" />
+		</input>
+		<input name="INPUT4" description="Rios" tooltip="" class="class es.unex.sextante.parameters.ParameterVectorLayer" coords="46,54,51,59">
+			<attribute name="mandatory" value="true" />
+			<attribute name="shape_type" value="-1" />
+		</input>
+		<output key="RECLASSPROC2" class="class es.unex.sextante.outputs.OutputRasterLayer" description="rios_raster" />
+		<output key="RESULTPROC3" class="class es.unex.sextante.outputs.OutputRasterLayer" description="Horadado" />
+		<data_object key="INNERPARAM0PROC1" value="ID" description="Field" />
+		<data_object key="INNERPARAM0PROC2" value="0" description="Selection" />
+		<data_object key="INNERPARAM1PROC2" value="[[-50.0|9.9999999999E10|10.0],[-9.9999999E7|-50.0|0.0]]" description="Fixed Table" />
+		<data_object key="RESULTPROC3" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Result" from Process 3: -' />
+		<data_object key="RECLASSPROC2" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Reclassify" from Reclassify' />
+		<data_object key="RESULTPROC1" value="class es.unex.sextante.modeler.elements.ModelElementRasterLayer,1" description='"Result" from Rasterize vector layer' />
+	</model>
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>

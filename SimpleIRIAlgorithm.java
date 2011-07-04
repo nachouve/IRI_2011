@@ -483,8 +483,8 @@ GeoAlgorithm {
 	OutputObjectsSet oo = alg.getOutputObjects();
 	//final Output output = oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT);
 
-	AnalysisExtent extent = new AnalysisExtent(vertidoLyr);
-	extent.setCellSize(25.);
+	AnalysisExtent extent = new AnalysisExtent(demLyr);
+	extent.setCellSize(demLyr.getLayerCellSize());
 	extent.enlargeOneCell();
 
 	alg.setAnalysisExtent(extent);
@@ -514,7 +514,7 @@ GeoAlgorithm {
 
 	//Load model
 	String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
-	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"iri_channel_step1.model");
+	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"iri_channel_step2.model");
 
 	geomodel.setAnalysisExtent(extent);
 
@@ -528,8 +528,8 @@ GeoAlgorithm {
 		params.getParameter(j).setParameterValue(demLyr);
 	    } else if (p.getParameterDescription().equalsIgnoreCase("pto_rasterized")){
 		params.getParameter(j).setParameterValue(resultRasterize);
-	    } else if (p.getParameterDescription().equalsIgnoreCase("Angle_slope")){
-		params.getParameter(j).setParameterValue(2.0);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("rios")){
+		params.getParameter(j).setParameterValue(waterBodiesLyr);
 	    }
 	}
 
@@ -545,7 +545,7 @@ GeoAlgorithm {
 	oo = geomodel.getOutputObjects();
 
 	extent = new AnalysisExtent(demLyr);
-	extent.setCellSize(25.);
+	extent.setCellSize(demLyr.getLayerCellSize());
 	extent.enlargeOneCell();
 
 	geomodel.setAnalysisExtent(extent);
@@ -594,7 +594,7 @@ GeoAlgorithm {
 	oo = algLines.getOutputObjects();
 
 	extent = new AnalysisExtent(resultNetwork);
-	extent.setCellSize(25.);
+	extent.setCellSize(demLyr.getLayerCellSize());
 	extent.enlargeOneCell();
 
 	algLines.setAnalysisExtent(extent);
@@ -632,7 +632,7 @@ GeoAlgorithm {
 	oo = algAuto.getOutputObjects();
 
 	extent = new AnalysisExtent(resultNetwork);
-	extent.setCellSize(25.);
+	extent.setCellSize(demLyr.getLayerCellSize());
 	extent.enlargeOneCell();
 
 	algAuto.setAnalysisExtent(extent);
@@ -781,7 +781,7 @@ GeoAlgorithm {
 	final boolean recalculate_cellsize = true;
 	extent.setXRange(env.getMinX(), env.getMaxX(), recalculate_cellsize);
 	extent.setYRange(env.getMinY(), env.getMaxY(), recalculate_cellsize);
-	extent.setCellSize(25.);
+	extent.setCellSize(demLyr.getLayerCellSize());
 
 	//extent.enlargeOneCell();
 	accflow.open();
@@ -1374,19 +1374,29 @@ GeoAlgorithm {
 	vectLyr.removeFilters();
 	vertidoLyr.close();
 
+	double x = 0;
+	double y = 0;
 	double dx = 0;
 	double dy = 0;
-	if ((p1 == null) || (p2 == null)){
-	    return null;
+	if (p2 == null){
+	    //Go to north
+	    dx = 0;
+	    dy = dist;
+	    if (p1 != null){
+		x = p1.x;
+		y = p1.y;
+	    } else {
+		return null;
+	    }
+	} else {
+	    x = p2.x - p1.x;
+	    y = p2.y - p1.y;
+	    double module = Math.sqrt(x*x+y*y);
+	    dx = (dist * x)/module ;
+	    dy = (dist * y)/module;
+	    x = p2.x;
+	    y = p2.y;
 	}
-	double x = p2.x - p1.x;
-	double y = p2.y - p1.y;
-	double module = Math.sqrt(x*x+y*y);
-	dx = (dist * x)/module ;
-	dy = (dist * y)/module;
-
-	x = p2.x;
-	y = p2.y;
 	GeometryFactory gf = new GeometryFactory();
 	for (int i = 0; i < num_geoms; i++){
 	    x = x + dx;

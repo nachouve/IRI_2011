@@ -29,13 +29,17 @@ public class IRIChannelNetworkAlgorithm
 extends
 GeoAlgorithm {
 
-    private final static int   m_iOffsetX[]   = { 0, 1, 1, 1, 0, -1, -1, -1 };
-    private final static int   m_iOffsetY[]   = { 1, 1, 0, -1, -1, -1, 0, 1 };
+    //    private final static int   m_iOffsetX[]   = { 0, 1, 1, 1, 0, -1, -1, -1 };
+    //    private final static int   m_iOffsetY[]   = { 1, 1, 0, -1, -1, -1, 0, 1 };
+
+    private final static int   m_iOffsetX[]   = { 0, 1, 1, 1, 0, -1, -1, -1, 0, 1, 2, 2, 2, 2, 2, 1, 0, -1, -2, -2, -2, -2, -2, -1 };
+    private final static int   m_iOffsetY[]   = { 1, 1, 0, -1, -1, -1, 0, 1, 2, 2, 2, 1, 0, -1, -2, -2, -2, -2, -2, -1, 0, 1, 2, 2 };
 
     public static final String METHOD         = "METHOD";
     public static final String DEM            = "DEM";
     public static final String THRESHOLDLAYER = "THRESHOLDLAYER";
     public static final String THRESHOLD      = "THRESHOLD";
+    public static final String TOLERANCE      = "TOLERANCE";
     public static final String NETWORK        = "NETWORK";
     public static final String NETWORKVECT    = "NETWORKVECT";
 
@@ -48,23 +52,32 @@ GeoAlgorithm {
     private IRasterLayer       m_Network;
 
     private ArrayList          m_HeadersAndJunctions;
+    private AnalysisExtent extent;
+    private ArrayList river_points;
+    private ArrayList river_cells;
+    private DirectionBrain brain;
 
-    private final double TOLERANCE = 2.5;
+    private double TOLERANCE_VALUE = 0;
 
 
     @Override
     public boolean processAlgorithm() throws GeoAlgorithmExecutionException {
 
+	brain = new DirectionBrain(2, 5);
+
 	m_iMethod = m_Parameters.getParameterValueAsInt(METHOD);
 	m_DEM = m_Parameters.getParameterValueAsRasterLayer(DEM);
 	m_Threshold = m_Parameters.getParameterValueAsRasterLayer(THRESHOLDLAYER);
 	m_dThreshold = m_Parameters.getParameterValueAsDouble(THRESHOLD);
+	TOLERANCE_VALUE = m_Parameters.getParameterValueAsDouble(TOLERANCE);
 
+	river_points = new ArrayList();
+	river_cells = new ArrayList();
 	m_Network = getNewRasterLayer(NETWORK, Sextante.getText("Channel_network"), IRasterLayer.RASTER_DATA_TYPE_INT);
 
 	m_Network.assign(0.0);
 
-	final AnalysisExtent extent = m_Network.getWindowGridExtent();
+	extent = m_Network.getWindowGridExtent();
 	m_DEM.setWindowExtent(extent);
 	m_Threshold.setWindowExtent(extent);
 
@@ -72,9 +85,7 @@ GeoAlgorithm {
 	m_iNY = m_DEM.getNY();
 
 	calculateChannelNetwork();
-
 	m_Network.setNoDataValue(0.0);
-
 
 	return !m_Task.isCanceled();
 
@@ -94,7 +105,9 @@ GeoAlgorithm {
 	    m_Parameters.addInputRasterLayer(DEM, Sextante.getText("Elevation"), true);
 	    m_Parameters.addInputRasterLayer(THRESHOLDLAYER, Sextante.getText("Threshold_layer"), true);
 	    m_Parameters.addSelection(METHOD, Sextante.getText("Criteria"), sMethod);
-	    m_Parameters.addNumericalValue(THRESHOLD, Sextante.getText("Threshold"), 10000,
+	    m_Parameters.addNumericalValue(THRESHOLD, Sextante.getText("Threshold"), 0,
+		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_DOUBLE);
+	    m_Parameters.addNumericalValue(TOLERANCE, Sextante.getText("MDE_Tolerance"), 1.5,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_DOUBLE);
 	    addOutputRasterLayer(NETWORK, Sextante.getText("Channel_network"));
 	    addOutputVectorLayer(NETWORKVECT, Sextante.getText("Channel_network"), OutputVectorLayer.SHAPE_TYPE_LINE);
@@ -152,22 +165,7 @@ GeoAlgorithm {
 		dValue = m_Threshold.getCellValueAsDouble(x, y);
 		//dHeight1 = m_DEM.getCellValueAsDouble(x, y);
 		if (meetsChannelConditions(dValue)) {
-		    //		    bIsHeader = true;
-		    //		    dHeight1 = m_DEM.getCellValueAsDouble(x, y);
-		    //		    if (!m_DEM.isNoDataValue(dHeight1)) {
-		    //			for (iDirection = 0; iDirection < 8; iDirection++) {
-		    //			    ix = x + m_iOffsetX[iDirection];
-		    //			    iy = y + m_iOffsetY[iDirection];
-		    //			    dValue = m_Threshold.getCellValueAsDouble(ix, iy);
-		    //			    if (meetsChannelConditions(dValue)) {
-		    //				dHeight2 = m_DEM.getCellValueAsDouble(ix, iy);
-		    //				if (dHeight2 >= dHeight1) {
-		    //				    bIsHeader = false;
-		    //				    break;
-		    //				}
-		    //			    }
-		    //			}
-		    //			if (bIsHeader) {
+
 		    headers.add(new GridCell(x, y, 1));
 		    // To break both bucles
 		    x = m_iNX;
@@ -208,17 +206,27 @@ GeoAlgorithm {
 	int x, y;
 	boolean bContinue = true;
 
+
 	x = cell.getX();
 	y = cell.getY();
 
+	int i = 0;
 	do {
+	    i++;
 	    m_Network.setCellValue(x, y, -1);
-	    System.out.println("From (" + x + "," + y +") : " + m_DEM.getCellValueAsFloat(x, y));
-	    iDirection = getDirToNextLowestCell(m_DEM, x, y, true, iDirection);
+
+	    System.out.println("[" + i+ "] From (" + x + "," + y +") : " + m_DEM.getCellValueAsFloat(x, y));
+	    //iDirection = getDirToNextLowestCell(m_DEM, x, y, true, iDirection);
+	    iDirection = getDirToNextLowestCell2(m_DEM, x, y, true);
 	    if (iDirection >= 0) {
 		x = x + m_iOffsetX[iDirection];
 		y = y + m_iOffsetY[iDirection];
-		System.out.println("T: (" + x + ",)" + y +" --> " + m_DEM.getCellValueAsFloat(x, y));
+		brain.addDirection(iDirection);
+		System.out.println("To (" + x + ", " + y +") --> " + m_DEM.getCellValueAsFloat(x, y));
+		Point2D pt = extent.getWorldCoordsFromGridCoords(x, y);
+		Coordinate c = new Coordinate(pt.getX(), pt.getY());
+		river_points.add(c);
+		river_cells.add(new Coordinate(x, y));
 	    }
 	    else {
 		bContinue = false;
@@ -283,7 +291,7 @@ GeoAlgorithm {
 	    return -1;
 	}
 
-	dMinCell = z + TOLERANCE;
+	dMinCell = z + TOLERANCE_VALUE;
 	for (iDir = -1, i = 0; i < 8; i++) {
 	    boolean wrong_direction = false;
 	    for (int j = 0; j < 3; j++){
@@ -293,6 +301,11 @@ GeoAlgorithm {
 		}
 	    }
 	    if (wrong_direction){
+		continue;
+	    }
+	    Coordinate c = new Coordinate(x + m_iOffsetX[i], y + m_iOffsetY[i]);
+	    if (river_cells.contains(c)){
+		System.out.println(" OH OH OH... esta ya estaba. ("+ (x + m_iOffsetX[i])+","+(y + m_iOffsetY[i])+")");
 		continue;
 	    }
 	    z2 = DEM.getCellValueAsDouble(x + m_iOffsetX[i], y + m_iOffsetY[i]);
@@ -315,8 +328,62 @@ GeoAlgorithm {
 	}
 
 	return iDir;
-
     }
+
+
+    /**
+     * Get the direction of the lowest cell values. (By Nacho Uve)
+     * 
+     * @param x
+     * @param y
+     * @param bForceDirToNoDataCell
+     * @param lastDirection
+     * @return
+     */
+    private int getDirToNextLowestCell2(final IRasterLayer DEM, final int x,
+	    final int y, final boolean bForceDirToNoDataCell) {
+
+	int iDir;
+	double z, z2, dValue, dMinCell;
+
+	z = DEM.getCellValueAsDouble(x, y);
+
+	if (DEM.isNoDataValue(z)) {
+	    return -1;
+	}
+
+	double[] z_posib = new double[8];
+
+	for (int i = 0; i < 8; i++){
+	    z_posib[i] = DEM.getCellValueAsDouble(x + m_iOffsetX[i], y + m_iOffsetY[i]);
+	}
+
+	int dir = brain.getLogicalDirection(z, z_posib, true);
+
+	if (dir == -1){
+	    System.out.println(" OH OH ... AQUI dió -1 la dirección. ");
+	    System.out.println(" Probaremos con 15 ");
+	    z_posib = new double[24];
+	    for (int i = 0; i < 24; i++){
+		z_posib[i] = DEM.getCellValueAsDouble(x + m_iOffsetX[i], y + m_iOffsetY[i]);
+	    }
+	    dir = brain.getLogicalDirection(z, z_posib, true);
+	}
+
+	if (dir == -1){
+	    System.out.println(" OH OH ... AQUI dió -1 la dirección. Definitivamente!!");
+	    return -1;
+	}
+
+	System.out.println("GO TO ------------> " + dir);
+	Coordinate c = new Coordinate(x + m_iOffsetX[dir], y + m_iOffsetY[dir]);
+	if (river_cells.contains(c)){
+	    System.out.println(" OH OH OH... esta ya estaba. ("+ (x + m_iOffsetX[dir])+","+(y + m_iOffsetY[dir])+")");
+	    return -1;
+	}
+	return dir;
+    }
+
 
     private int getDirToNextChannelCell(final int x,
 	    final int y,
@@ -474,18 +541,11 @@ GeoAlgorithm {
 
     private void createRiverFromHeaderLayer() throws GeoAlgorithmExecutionException {
 
-	int i;
-	int x, y;
-	int ix, iy;
-	int iDirection;
-	int iIndexDownslope = -1;
-	int iOrder;
 	boolean bContinue;
 	double dLength;
 	Point2D pt;
 	GridCell cell;
-	ArrayList coordsList;
-	final AnalysisExtent extent = m_DEM.getWindowGridExtent();
+	//final AnalysisExtent extent = m_DEM.getWindowGridExtent();
 	final Object[] values = new Object[4];
 
 	//	final String sNames[] = { Sextante.getText("ID"), Sextante.getText("Length"), Sextante.getText("Order"),
@@ -494,60 +554,25 @@ GeoAlgorithm {
 	final String sNames[] = { Sextante.getText("ID"), Sextante.getText("Length")};
 	final Class[] types = { Integer.class, Double.class};
 
-
 	final IVectorLayer network = getNewVectorLayer(NETWORKVECT, Sextante.getText("Channel_network"),
 		IVectorLayer.SHAPE_TYPE_LINE, types, sNames);
-	final Object[] headers = m_HeadersAndJunctions.toArray();
-	Arrays.sort(headers);
 
 	setProgressText(Sextante.getText("Creating_vector_layer"));
 
-	//TODO CLEAN CODE because there is a unique header!!!!!!
-	for (i = headers.length - 1; (i > -1) && setProgress(headers.length - i, headers.length); i--) {
-	    System.out.println(">>>>>>>>>>>>> headers.length: " + headers.length);
-	    cell = (GridCell) headers[i];
-	    x = cell.getX();
-	    y = cell.getY();
-	    coordsList = new ArrayList();
-	    pt = extent.getWorldCoordsFromGridCoords(cell);
-	    coordsList.add(new Coordinate(pt.getX(), pt.getY()));
-	    dLength = 0;
-	    iOrder = m_Network.getCellValueAsInt(x, y);
-	    bContinue = true;
-	    iDirection = -1;
-	    do {
-		iDirection = getDirToNextChannelCell(x, y, iDirection);
-		if (iDirection >= 0) {
-		    ix = x + m_iOffsetX[iDirection];
-		    iy = y + m_iOffsetY[iDirection];
 
-		    cell = new GridCell(ix, iy, m_DEM.getCellValueAsDouble(ix, iy));
-		    pt = extent.getWorldCoordsFromGridCoords(cell);
-		    coordsList.add(new Coordinate(pt.getX(), pt.getY()));
-		    dLength += m_DEM.getDistToNeighborInDir(iDirection);
+	values[0] = new Integer(1);
+	//TODO CHANGE THAT WRONG LENGTH!!!
+	values[1] = new Double(river_points.size()*100);
+	//	    values[2] = new Integer(iOrder);
+	//	    values[3] = new Integer(iIndexDownslope);
 
-		    x = ix;
-		    y = iy;
-
-		} else {
-		    bContinue = false;
-		}
-	    } while (bContinue && !m_Task.isCanceled());
-
-	    values[0] = new Integer(i);
-	    values[1] = new Double(dLength);
-	    //	    values[2] = new Integer(iOrder);
-	    //	    values[3] = new Integer(iIndexDownslope);
-
-	    final Coordinate coords[] = new Coordinate[coordsList.size()];
-	    for (int j = 0; j < coords.length; j++) {
-		coords[j] = (Coordinate) coordsList.get(j);
-	    }
-	    final Geometry geom = new GeometryFactory().createLineString(coords);
-	    System.out.println(">>>>>>>>>>>>> network.addFeature");
-	    network.addFeature(geom, values);
+	final Coordinate coords[] = new Coordinate[river_points.size()];
+	for (int j = 0; j < coords.length; j++) {
+	    coords[j] = (Coordinate) river_points.get(j);
 	}
-
+	final Geometry geom = new GeometryFactory().createLineString(coords);
+	System.out.println(">>>>>>>>>>>>> network.addFeature");
+	network.addFeature(geom, values);
 
     }
 
