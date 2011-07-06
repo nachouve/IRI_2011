@@ -25,7 +25,41 @@ public class DirectionBrain {
 	directions = new ArrayList<Integer>();
     }
 
+
+    public int getDirection8(int dir){
+
+	if (dir < 8){
+	    return dir;
+	}
+
+	switch (dir) {
+	case 8: dir = 0; break;
+	case 9: dir = 0; break;
+	case 10: dir = 1; break;
+	case 11: dir = 1; break;
+	case 12: dir = 2; break;
+	case 13: dir = 2; break;
+	case 14: dir = 3; break;
+	case 15: dir = 3; break;
+	case 16: dir = 4; break;
+	case 17: dir = 4; break;
+	case 18: dir = 5; break;
+	case 19: dir = 5; break;
+	case 20: dir = 6; break;
+	case 21: dir = 6; break;
+	case 22: dir = 7; break;
+	case 23: dir = 7; break;
+	default: dir = -1; break;
+	}
+	return dir;
+    }
+
     public void addDirection(int dir){
+
+	if (dir >= 8){
+	    dir = getDirection8(dir);
+	}
+
 	if (directions.size() == SIZE){
 	    directions.remove(0);
 	}
@@ -48,10 +82,11 @@ public class DirectionBrain {
 	if (size < num_last ){
 	    num_last = size;
 	}
-	//int[] dir_sum = new int[8];
-	//for (int i = 0; i < 8; i++){
-	int[] dir_sum = new int[24];
-	for (int i = 0; i < 24; i++){
+
+	//	int[] dir_sum = new int[24];
+	//	for (int i = 0; i < 24; i++){
+	int[] dir_sum = new int[8];
+	for (int i = 0; i < 8; i++){
 	    dir_sum[i] = -1;
 	}
 
@@ -61,7 +96,8 @@ public class DirectionBrain {
 
 	int max_dir = -1;
 	int max_repetition = -1;
-	for (int i = 0; i < 24; i++){
+	//	for (int i = 0; i < 24; i++){
+	for (int i = 0; i < 8; i++){
 	    if (dir_sum[i] > max_repetition){
 		max_repetition = dir_sum[i];
 		max_dir = i;
@@ -109,6 +145,73 @@ public class DirectionBrain {
 	return min_dir;
     }
 
+    /**
+     * Check 3 cells on the last directions. Needs 24 cells (5x5)
+     * 
+     * @param z
+     * @param z_pos 24 positions
+     * @return
+     */
+    public int getDirection2Steps(double z, double[] z_pos){
+
+	int lastDirection = getLastDirection();
+
+	int[] possibleCells = new int[3];
+
+	if (lastDirection == 0){
+	    possibleCells[0] = 23;
+	    possibleCells[1] = 8;
+	    possibleCells[2] = 9;
+	} else if (lastDirection == 1){
+	    possibleCells[0] = 9;
+	    possibleCells[1] = 10;
+	    possibleCells[2] = 11;
+	} else if (lastDirection == 2){
+	    possibleCells[0] = 11;
+	    possibleCells[1] = 12;
+	    possibleCells[2] = 13;
+	} else if (lastDirection == 3){
+	    possibleCells[0] = 13;
+	    possibleCells[1] = 14;
+	    possibleCells[2] = 15;
+	} else if (lastDirection == 4){
+	    possibleCells[0] = 15;
+	    possibleCells[1] = 16;
+	    possibleCells[2] = 17;
+	} else if (lastDirection == 5){
+	    possibleCells[0] = 17;
+	    possibleCells[1] = 18;
+	    possibleCells[2] = 19;
+	} else if (lastDirection == 6){
+	    possibleCells[0] = 19;
+	    possibleCells[1] = 20;
+	    possibleCells[2] = 21;
+	} else if (lastDirection == 7){
+	    possibleCells[0] = 21;
+	    possibleCells[1] = 22;
+	    possibleCells[2] = 23;
+	} else {
+	    possibleCells[0] = -1;
+	    possibleCells[1] = -1;
+	    possibleCells[2] = -1;
+	}
+	double min = Double.MAX_VALUE;
+	int dir = -1;
+	for (int i = 0; i < 3; i++){
+	    int aux_dir = possibleCells[i];
+	    System.out.println(z + "[" + aux_dir +"] --> " + z_pos[aux_dir]);
+	    if (z_pos[aux_dir] < min){
+		min = z_pos[aux_dir];
+		dir = aux_dir;
+	    }
+	}
+
+	if (min < z + MDT_TOLERANCE){
+	    return dir;
+	}
+	return -1;
+
+    }
 
     /**
      * Hice una prueba de pasarle 24 celdas de alrededor y aún está ahí el código. pero el tema es que si el MDT está bien relleno

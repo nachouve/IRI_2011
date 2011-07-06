@@ -20,7 +20,6 @@ import es.unex.sextante.outputs.OutputVectorLayer;
 import es.unex.sextante.rasterWrappers.GridCell;
 
 
-
 /**
  * Get the direction of the lowest cell values. (By Nacho Uve) Based on ChannelNetworkAlgorithm
  * TODO: Removes all vectorial output code!!
@@ -360,19 +359,35 @@ GeoAlgorithm {
 
 	int dir = brain.getLogicalDirection(z, z_posib, true);
 
+	//	if (dir == -1){
+	//	    System.out.println(" OH OH ... AQUI dió -1 la dirección. ");
+	//	    System.out.println("************************* Probaremos con 24 **********************");
+	//	    z_posib = new double[24];
+	//	    for (int i = 0; i < 24; i++){
+	//		z_posib[i] = DEM.getCellValueAsDouble(x + m_iOffsetX[i], y + m_iOffsetY[i]);
+	//	    }
+	//	    dir = brain.getLogicalDirection(z, z_posib, true);
+	//	}
+
 	if (dir == -1){
 	    System.out.println(" OH OH ... AQUI dió -1 la dirección. ");
-	    System.out.println(" Probaremos con 15 ");
+	}
+
+	if (dir == -1){
+
 	    z_posib = new double[24];
 	    for (int i = 0; i < 24; i++){
 		z_posib[i] = DEM.getCellValueAsDouble(x + m_iOffsetX[i], y + m_iOffsetY[i]);
 	    }
-	    dir = brain.getLogicalDirection(z, z_posib, true);
-	}
 
-	if (dir == -1){
-	    System.out.println(" OH OH ... AQUI dió -1 la dirección. Definitivamente!!");
-	    return -1;
+	    dir = brain.getDirection2Steps(z, z_posib);
+
+	    if (dir == -1){
+		System.out.println(" OH OH ... Avancé 2 celdas, pero AQUI dió -1 la dirección. Definitivamente!!");
+		return -1;
+	    }
+	    System.out.println(" Avancé 2 celdas y BIEEEEEEEEEEEEEEEEN!");
+
 	}
 
 	System.out.println("GO TO ------------> " + dir);
