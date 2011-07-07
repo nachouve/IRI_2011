@@ -315,7 +315,7 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(SEARCH_FACTOR_RADIO, "Radio para buscar factores amb.", 100,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    //Par�metros para el c�lculo de la diluci�n
+	    //Par�metros para el calculo de la dilucion
 	    //Tambi�n llamado "C_mez"
 	    m_Parameters.addNumericalValue(MAX_DBO_after,
 		    "Concentraci�n de DBO m�xima permitida del r�o despu�s del vertido, en ppm", 6.0,
@@ -330,7 +330,7 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(perc_FACT, "Importancia relativa de IRI_fact", 60,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    //Pesos seg�n el estado ecol�gico
+	    //Pesos seg�n el estado ecologico
 	    m_Parameters.addNumericalValue("ecoW_E", "ecoW_E", 100, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 	    m_Parameters.addNumericalValue("ecoW_D", "ecoW_D", 64, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 	    m_Parameters.addNumericalValue("ecoW_C", "ecoW_C", 20, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
@@ -678,8 +678,8 @@ GeoAlgorithm {
 	// COASTAL RINGS
 
 	// See if the waste_water_spill affects a coastal sector
-	// Primero se calcula con anillos (cortados s�lo en la zonas de mar)
-	// Luego se crean puntos (siguiendo la direcci�n y sentido del r�o en tierra) para la representaci�n final
+	// Primero se calcula con anillos (cortados solo en la zonas de mar)
+	// Luego se crean puntos (siguiendo la direccion y sentido del rio en tierra) para la representacion final
 	networkRing_lyr = null;
 	network_lyr.open();
 
@@ -703,7 +703,7 @@ GeoAlgorithm {
 	    final boolean recalculate_cellsize = true;
 	    extent.setXRange(env.getMinX(), env.getMaxX(), recalculate_cellsize);
 	    extent.setYRange(env.getMinY(), env.getMaxY(), recalculate_cellsize);
-	    extent.setCellSize(20.);
+	    extent.setCellSize(demLyr.getLayerCellSize());
 
 	    //Load model
 	    modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
@@ -740,7 +740,6 @@ GeoAlgorithm {
 			networkRing_lyr = (IVectorLayer) o.getOutputObject();
 			networkRing_lyr.open();
 			System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
-			m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
 			networkRing_lyr.close();
 		    }
 		}
@@ -753,7 +752,9 @@ GeoAlgorithm {
 	network_lyr.close();
 	network_lyr.removeFilters();
 
-	//S� que el valor que me interesa del mar es el ultimo attribute
+
+
+	//Se que el valor que me interesa para identificar el mar es el ultimo attribute del resultado
 	if (networkRing_lyr != null) {
 	    int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
 
@@ -761,8 +762,19 @@ GeoAlgorithm {
 	    networkRing_lyr.open();
 	    System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
 	    networkRing_lyr.close();
+	    m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
 
 	}
+
+	final IVectorLayer r_ring = getNewVectorLayer("RESULT_networkRing", Sextante.getText("RESULT_networkRing"),
+		networkRing_lyr.getShapeType(), networkRing_lyr.getFieldTypes(), networkRing_lyr.getFieldNames());
+
+	IFeatureIterator it = networkRing_lyr.iterator();
+	for (;it.hasNext();){
+	    r_ring.addFeature(it.next());
+	}
+	it.close();
+
 	// END COASTAL
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
