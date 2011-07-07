@@ -29,6 +29,7 @@ import es.unex.sextante.core.AnalysisExtent;
 import es.unex.sextante.core.GeoAlgorithm;
 import es.unex.sextante.core.OutputObjectsSet;
 import es.unex.sextante.core.ParametersSet;
+import es.unex.sextante.core.Sextante;
 import es.unex.sextante.dataObjects.IFeature;
 import es.unex.sextante.dataObjects.IFeatureIterator;
 import es.unex.sextante.dataObjects.IRecord;
@@ -207,8 +208,8 @@ GeoAlgorithm {
 	    c_ascii++;
 	}
 
-	//	IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
-	//		resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
+	IVectorLayer aux = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
+		IVectorLayer.SHAPE_TYPE_POLYGON, fieldTypes, fieldNames);
 
 	System.out.println("==============  START DETECTING IRI ACCUMUTATION POINTS ON THE GRID =========");
 	for (int i = 0; i < iri_lyrs.length; i++) {
@@ -228,8 +229,12 @@ GeoAlgorithm {
 		    Geometry geom = cell.getGeometry();
 		    //geom.covers(g)
 		}
+		g_iter.close();
+		graticule.close();
 	    }
+	    iter.close();
 	    acc_iri.close();
+
 	}
 
 	return !m_Task.isCanceled();
