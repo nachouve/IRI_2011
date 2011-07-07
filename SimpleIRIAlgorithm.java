@@ -998,7 +998,6 @@ GeoAlgorithm {
 	final double[] iri_fa_array = new double[num_points];
 
 	final AnalysisExtent extent = new AnalysisExtent(network_lyr);
-	factLyr.addFilter(new BoundingBoxFilter(extent));
 
 	try {
 	    boolean coastal_rings = (networkRing_lyr != null);
@@ -1008,7 +1007,11 @@ GeoAlgorithm {
 		networkRing_lyr.open();
 		num_rings = networkRing_lyr.getShapesCount();
 		networkRing_lyr.close();
+
+		extent.addExtent(networkRing_lyr.getFullExtent());
 	    }
+
+	    factLyr.addFilter(new BoundingBoxFilter(extent));
 
 	    final IFeatureIterator iter1 = factLyr.iterator();
 	    for (int j = 0; iter1.hasNext(); j++) {
