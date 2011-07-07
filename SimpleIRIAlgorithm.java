@@ -60,7 +60,7 @@ import es.unex.sextante.vectorTools.linesToEquispacedPoints.LinesToEquispacedPoi
  * Estoy siguiendo las instruciones que hay en el DROPBOX de Concha To compile this algorithm it must be place on gridAnalysis
  * project of SEXTANTE.
  * 
- * En la zona de costa, la metodolog�a cambia un poco.
+ * En la zona de costa, la metodologia cambia un poco.
  * 
  * Observaciones: - Las unidades del SIG deben ser "METROS" - ACCFLOW debe contar celdas (autom�ticamente el algoritmo obtendr� la
  * cuenca en km2)
@@ -72,7 +72,7 @@ public class SimpleIRIAlgorithm
 extends
 GeoAlgorithm {
 
-    private static final int    MAX_IRI_DIST                = 5000;
+    private static final int    MAX_IRI_DIST                = 5100;
 
     //OJO: ?Deberia tener solamente 1 punto?
     public static final String  VERTIDO                     = "VERTIDO";

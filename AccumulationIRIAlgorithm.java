@@ -69,7 +69,7 @@ public class AccumulationIRIAlgorithm
 extends
 GeoAlgorithm {
 
-    private static final int    MAX_IRI_DIST                = 5000;
+    private static final int    MAX_IRI_DIST                = 5100;
 
     //OJO: ?Deberia tener solamente 1 punto?
     public static final String  VERTIDO                     = "VERTIDO";
