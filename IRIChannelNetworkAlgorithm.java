@@ -585,9 +585,13 @@ GeoAlgorithm {
 	for (int j = 0; j < coords.length; j++) {
 	    coords[j] = (Coordinate) river_points.get(j);
 	}
-	final Geometry geom = new GeometryFactory().createLineString(coords);
-	System.out.println(">>>>>>>>>>>>> network.addFeature");
-	network.addFeature(geom, values);
+	if (coords.length > 0 && coords[0] != null) {
+	    final Geometry geom = new GeometryFactory().createLineString(coords);
+	    System.out.println(">>>>>>>>>>>>> network.addFeature");
+	    network.addFeature(geom, values);
+	} else {
+	    System.out.println(">>>>>>>>>>>>> WRONG RIVER??!!!");
+	}
 
     }
 
