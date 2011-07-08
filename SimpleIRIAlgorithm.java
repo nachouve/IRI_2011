@@ -747,33 +747,32 @@ GeoAlgorithm {
 		System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	    }
 
+	    //Se que el valor que me interesa para identificar el mar es el ultimo attribute del resultado
+	    if (networkRing_lyr != null) {
+		int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
+
+		networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
+		networkRing_lyr.open();
+		System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
+		networkRing_lyr.close();
+		m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
+
+		final IVectorLayer r_ring = getNewVectorLayer("RESULT_networkRing", Sextante.getText("RESULT_networkRing"),
+			networkRing_lyr.getShapeType(), networkRing_lyr.getFieldTypes(), networkRing_lyr.getFieldNames());
+
+		IFeatureIterator it = networkRing_lyr.iterator();
+		for (;it.hasNext();){
+		    r_ring.addFeature(it.next());
+		}
+		it.close();
+
+	    }
+
+
 	}
 
 	network_lyr.close();
 	network_lyr.removeFilters();
-
-
-
-	//Se que el valor que me interesa para identificar el mar es el ultimo attribute del resultado
-	if (networkRing_lyr != null) {
-	    int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
-
-	    networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
-	    networkRing_lyr.open();
-	    System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
-	    networkRing_lyr.close();
-	    m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
-
-	}
-
-	final IVectorLayer r_ring = getNewVectorLayer("RESULT_networkRing", Sextante.getText("RESULT_networkRing"),
-		networkRing_lyr.getShapeType(), networkRing_lyr.getFieldTypes(), networkRing_lyr.getFieldNames());
-
-	IFeatureIterator it = networkRing_lyr.iterator();
-	for (;it.hasNext();){
-	    r_ring.addFeature(it.next());
-	}
-	it.close();
 
 	// END COASTAL
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
