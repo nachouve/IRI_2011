@@ -20,6 +20,7 @@ package es.udc.sextante.gridAnalysis.IRI;
 
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -187,13 +188,14 @@ GeoAlgorithm {
 
 	//IVectorLayer.SHAPE_TYPE_POLYGON;
 	//GENERATE FIELD/COLUMN ON THE RESULT
-	String[] fieldNames = new String[(iri_lyrs.length * 5) + 1];
-	Class[]  fieldTypes = new Class[(iri_lyrs.length * 5) + 1];
+	int num_columns = (iri_lyrs.length * 5) + 1;
+	String[] fieldNames = new String[num_columns];
+	Class[]  fieldTypes = new Class[num_columns];
 
 	fieldNames[0] = "IRI";
 	fieldTypes[0] = Double.class;
 	char c_ascii = 'A';
-	for (int i = 1; i < iri_lyrs.length; ){
+	for (int i = 1, j = 0; j < iri_lyrs.length; j++){
 	    fieldNames[i] = String.valueOf(c_ascii)+"_vertido";
 	    fieldTypes[i++] = String.class;
 	    fieldNames[i] = String.valueOf(c_ascii)+"_xp";
@@ -212,10 +214,14 @@ GeoAlgorithm {
 		IVectorLayer.SHAPE_TYPE_POLYGON, fieldTypes, fieldNames);
 
 	System.out.println("==============  START DETECTING IRI ACCUMUTATION POINTS ON THE GRID =========");
+
+	HashMap<Integer, Object[]> cell_map = new HashMap<Integer, Object[]>();
 	for (int i = 0; i < iri_lyrs.length; i++) {
 	    IVectorLayer acc_iri = iri_lyrs[i];
+
 	    System.out.println(" ---- "+ acc_iri.getName() +" ----");
-	    acc_iri.open();
+	    Object[] values = new Object[num_columns];
+	    //acc_iri.open();
 	    IFeatureIterator iter = acc_iri.iterator();
 	    for (;iter.hasNext();){
 		IFeature iri_feat = iter.next();
@@ -224,21 +230,80 @@ GeoAlgorithm {
 		graticule.open();
 		IFeatureIterator g_iter = graticule.iterator();
 		boolean found = false;
-		for (;g_iter.hasNext() && found;){
+		int cell_num = 0;
+		for (;g_iter.hasNext() && !found; cell_num++){
 		    IFeature cell = g_iter.next();
-		    Geometry geom = cell.getGeometry();
-		    //geom.covers(g)
+		    Geometry cell_geom = cell.getGeometry();
+		    found = cell_geom.covers(iri_geom);
 		}
 		g_iter.close();
 		graticule.close();
+		if (found){
+		    addCellWithValues(cell_map, cell_num, acc_iri, i, acc_iri.getName(), iri_feat, iri_lyrs.length);
+		}
 	    }
 	    iter.close();
-	    acc_iri.close();
-
+	    System.out.println("NUMBER OF CELLS WITH DATA: " +cell_map.size());
+	    //acc_iri.close();
 	}
+
+	final IVectorLayer result = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
+		AdditionalInfoMultipleInput.DATA_TYPE_VECTOR_POLYGON, fieldTypes, fieldNames);
+
+
+	IFeatureIterator g_iter = graticule.iterator();
+	for (int i = 0; g_iter.hasNext(); i++){
+	    System.out.println(i +"/" +graticule.getShapesCount());
+	    if (cell_map.containsKey(i)){
+		System.out.println("Contains: " + i);
+		IFeature cell = g_iter.next();
+		Geometry geom = cell.getGeometry();
+		Object[] values = cell_map.get(i);
+		result.addFeature(geom, values);
+		cell_map.remove(i);
+	    } else {
+		g_iter.next();
+	    }
+	}
+	graticule.close();
+	g_iter.close();
+
 
 	return !m_Task.isCanceled();
     }
+
+    private void addCellWithValues(HashMap<Integer, Object[]> cellMap, int cellNum, IVectorLayer accLayer, int lyrIdx, String name_lyr, IFeature iriFeat, int num_lyrs) {
+
+	Object[] values;
+	if (cellMap.containsKey(cellNum)){
+	    values = cellMap.get(cellNum);
+	} else {
+	    values = new Object[1+(num_lyrs*5)];
+	}
+	int i = 1 + (lyrIdx * 5);
+	if (values[i] != null){
+	    System.out.println("22222222222222222222222222222222222     OH OH Parece que hay 2 puntos en la misma celda     2222222222222222222222222222222222");
+	}
+	values[i++] = name_lyr;
+	values[i++] = getValue("Xp", accLayer, iriFeat);
+	values[i++] = getValue("IRI", accLayer, iriFeat);
+	values[i++] = getValue("IRI_fact", accLayer, iriFeat);
+	values[i++] = getValue("IRI_dma", accLayer, iriFeat);
+
+	cellMap.put(cellNum, values);
+    }
+
+
+    private Object getValue(String field_name, IVectorLayer accLayer, IFeature iriFeat) {
+	IRecord record = iriFeat.getRecord();
+	int idx = accLayer.getFieldIndexByName(field_name);
+	if (idx == -1){
+	    System.out.println(field_name + "does not exists!!!!");
+	    return null;
+	}
+	return record.getValue(idx);
+    }
+
 
     private AnalysisExtent getEnlargedExtend(Rectangle2D extent, int size){
 
