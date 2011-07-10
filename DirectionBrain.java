@@ -1,6 +1,7 @@
 package es.udc.sextante.gridAnalysis.IRI;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Una lista FIFO para hacer algo inteligente la direccion a tomar
@@ -230,7 +231,9 @@ public class DirectionBrain {
 		min = z_pos[i];
 	    }
 	}
-	ArrayList<Integer> min_cells = new ArrayList<Integer>();
+
+	ArrayList<Integer> min_cells_dir = new ArrayList<Integer>();
+	ArrayList<Double> min_cells = new ArrayList<Double>();
 
 	for (int i = 0; i < z_pos.length; i++){
 	    if (z_pos.length == 8) {
@@ -250,45 +253,55 @@ public class DirectionBrain {
 	    if (onlyMin){
 		if (z_pos[i] <= (min + ERROR_TOLERANCE)){
 		    System.out.println(" Added_E[" + i +"]");
-		    min_cells.add(i);
+		    min_cells_dir.add(i);
+		    min_cells.add(z_pos[i]);
 		}
 	    } else {
 		if (z_pos[i] <= (z + MDT_TOLERANCE)){
 		    System.out.println(" Added_T[" + i +"]");
-		    min_cells.add(i);
+		    min_cells_dir.add(i);
+		    min_cells.add(z_pos[i]);
 		}
+	    }
+	}
+
+	if (min_cells_dir.size() == 0){
+	    double[] sort_z = new double[z_pos.length];
+	    for (int k = 0; k < z_pos.length; k++){
+		sort_z[k] = z_pos[k];
+	    }
+	    Arrays.sort(sort_z);
+	    double diff = Math.abs(Math.abs(sort_z[0])-Math.abs(sort_z[1]));
+	    if (diff > (15*MDT_TOLERANCE)){
+		System.out.println(" TERRIBLE DIFERENCIA ENTRE MINIMOS");
+		return getLogicalDirection(sort_z[1]+MDT_TOLERANCE, z_pos, false);
 	    }
 	}
 
 	// If lastDirection can be... go ahead!
 	int lastDirection = getLastDirection();
-	if (onlyMin && min_cells.contains(lastDirection)){
+	if (onlyMin && min_cells_dir.contains(lastDirection)){
 	    System.out.println(" Using last [" + lastDirection +"]");
 	    return lastDirection;
 	}
 
-
-	//	for (int i = 0; i < not_allowed.length; i++){
-	//	    min_cells.remove(new Integer(not_allowed[i]));
-	//	}
-
 	// If most used Direction of the last 3 can be... go ahead!
 	int last3Direction = getLastDirection(3);
-	if (onlyMin && min_cells.contains(last3Direction)){
+	if (onlyMin && min_cells_dir.contains(last3Direction)){
 	    System.out.println(" Using 3 Brains [" + last3Direction +"]");
 	    return last3Direction;
 	}
 
 	// If most used Direction of the last X can be... go ahead!
 	int lastXDirection = getLastDirection(SIZE);
-	if (onlyMin && min_cells.contains(lastXDirection)){
+	if (onlyMin && min_cells_dir.contains(lastXDirection)){
 	    System.out.println(" Using 10 Brains [" + lastXDirection +"]");
 	    return lastXDirection;
 	}
 
-	if (min_cells.size()>0){
-	    System.out.println(" Using first on the array [" + min_cells.get(0) +"]");
-	    return getMinZdir(min_cells, z_pos);
+	if (min_cells_dir.size()>0){
+	    System.out.println(" Using first on the array [" + min_cells_dir.get(0) +"]");
+	    return getMinZdir(min_cells_dir, z_pos);
 	} else {
 	    if (onlyMin){
 		System.out.println(" CALL WITH MORE TOLERANCE]");
