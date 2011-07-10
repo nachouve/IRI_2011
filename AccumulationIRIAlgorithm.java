@@ -360,6 +360,8 @@ GeoAlgorithm {
 
 	try {
 
+	    demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
+
 	    vertidoLyr = m_Parameters.getParameterValueAsVectorLayer(VERTIDO);
 	    final int he_idx = m_Parameters.getParameterValueAsInt(HE_ATTRIB);
 
@@ -467,10 +469,8 @@ GeoAlgorithm {
     @Override
     public boolean processAlgorithm() throws GeoAlgorithmExecutionException {
 	initVariables();
-	final int i = 0;
 
 	final int heAttr = m_Parameters.getParameterValueAsInt(HE_ATTRIB);
-	//vertidoLyr.addFilter(new BoundingBoxFilter(m_AnalysisExtent));
 
 	//////////////////////
 	// RASTERIZE
@@ -480,10 +480,9 @@ GeoAlgorithm {
 	params.getParameter(RasterizeVectorLayerAlgorithm.FIELD).setParameterValue(heAttr);
 
 	OutputObjectsSet oo = alg.getOutputObjects();
-	//final Output output = oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT);
 
-	AnalysisExtent extent = new AnalysisExtent(vertidoLyr);
-	extent.setCellSize(25.);
+	AnalysisExtent extent = new AnalysisExtent(demLyr);
+	//extent.setCellSize(25);
 	extent.enlargeOneCell();
 
 	alg.setAnalysisExtent(extent);
@@ -495,12 +494,8 @@ GeoAlgorithm {
 	IRasterLayer resultRasterize = null;
 
 	if (bSucess) {
-	    //output = oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT);
-	    //m_OutputObjects.getOutput(RESULT).setOutputObject(output.getOutputObject());
-
 	    resultRasterize = (IRasterLayer) oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT).getOutputObject();
 	    m_OutputObjects.getOutput("RESULT_rasterize_vert").setOutputObject(resultRasterize);
-	    //return true;
 	}
 	else {
 	    return false;
@@ -508,51 +503,59 @@ GeoAlgorithm {
 
 	System.out.println(resultRasterize.getMaxValue());
 
+
 	//////////////////////
 	// CHANNEL NETWORK
 
-	demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
+	System.out.println("-------------------------- CHANNEL NETWORK");
+	//Load model
+	String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
+	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"iri_channel_step2.model");
 
-	final IRIChannelNetworkAlgorithm algCN = new IRIChannelNetworkAlgorithm();
-	params = algCN.getParameters();
-	params.getParameter(IRIChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
-	params.getParameter(IRIChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
-	params.getParameter(IRIChannelNetworkAlgorithm.THRESHOLD).setParameterValue(0);
-	params.getParameter(IRIChannelNetworkAlgorithm.METHOD).setParameterValue(0); //Usar ChannelNetworkAlgorithm.METHOD_GREATER_THAN
+	geomodel.setAnalysisExtent(extent);
 
-	oo = algCN.getOutputObjects();
+	params = geomodel.getParameters();
 
-	extent = new AnalysisExtent(vertidoLyr);
-	extent.setCellSize(25.);
+	for (int j=0; j < params.getNumberOfParameters(); j++) {
+	    Parameter p = params.getParameter(j);
+	    if (p.getParameterDescription().equalsIgnoreCase("Punto")){
+		params.getParameter(j).setParameterValue(vertidoLyr);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("MDT")){
+		params.getParameter(j).setParameterValue(demLyr);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("pto_rasterized")){
+		params.getParameter(j).setParameterValue(resultRasterize);
+	    } else if (p.getParameterDescription().equalsIgnoreCase("rios")){
+		params.getParameter(j).setParameterValue(waterBodiesLyr);
+	    }
+	}
+
+	oo = geomodel.getOutputObjects();
+
+	extent = new AnalysisExtent(demLyr);
 	extent.enlargeOneCell();
 
-	algCN.setAnalysisExtent(extent);
-	System.out.println("-------------------------- CHANNEL NETWORK");
+	geomodel.setAnalysisExtent(extent);
 
-	bSucess = algCN.execute(m_Task, m_OutputFactory);
+	bSucess = geomodel.execute(m_Task, m_OutputFactory);
 	IVectorLayer resultNetwork = null;
 
 	if (bSucess) {
 
-	    resultNetwork = (IVectorLayer) algCN.getOutputObjects().getOutput(algCN.NETWORKVECT).getOutputObject();
-	    // We create the a newVectorLayer (needed to do properly the output)
-	    IVectorLayer aux = getNewVectorLayer("RESULT_network", Sextante.getText("RESULT_network"),
-		    resultNetwork.getShapeType(), resultNetwork.getFieldTypes(), resultNetwork.getFieldNames());
+	    OutputObjectsSet outputs = geomodel.getOutputObjects();
 
-	    resultNetwork.open();
-	    IFeatureIterator it = resultNetwork.iterator();
-	    for (; it.hasNext();){
-		aux.addFeature(it.next());
-		// And copy just the first channel
-		break;
+	    for (int j = 0; j < outputs.getOutputLayersCount(); j++) {
+		Output o = outputs.getOutput(j);
+		System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
+		if (o.getDescription().equalsIgnoreCase("IRI_river")){
+		    resultNetwork = (IVectorLayer) o.getOutputObject();
+		    resultNetwork.open();
+		    System.out.println(">>>>>>>>> resultNetwork.feats: " +  resultNetwork.getShapesCount());
+		    m_OutputObjects.getOutput("RESULT_network").setOutputObject(resultNetwork);
+		    resultNetwork.close();
+		}
 	    }
-	    resultNetwork.close();
-
-	    m_OutputObjects.getOutput("RESULT_network").setOutputObject(aux);
-
-	}
-	else {
-	    return false;
+	} else {
+	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
 
 	//To avoid more than one network
@@ -661,11 +664,11 @@ GeoAlgorithm {
 	// See if the waste_water_spill affects a coastal sector
 	// Primero se calcula con anillos (cortados solo en la zonas de mar)
 	// Luego se crean puntos (siguiendo la direccion y sentido del rio en tierra) para la representacion final
-
+	networkRing_lyr = null;
 	network_lyr.open();
 
 	int num_points_network = network_lyr.getShapesCount();
-	if (num_points_network > 0 && num_points_network <= num_points ) {
+	if (num_points_network > 0 && num_points_network < num_points ) {
 	    System.out.println("-------------------------- COASTAL RINGS ARE NECESSARY -------------------------- "
 		    +  num_points_network);
 
@@ -684,11 +687,11 @@ GeoAlgorithm {
 	    final boolean recalculate_cellsize = true;
 	    extent.setXRange(env.getMinX(), env.getMaxX(), recalculate_cellsize);
 	    extent.setYRange(env.getMinY(), env.getMaxY(), recalculate_cellsize);
-	    extent.setCellSize(20.);
+	    extent.setCellSize(demLyr.getLayerCellSize());
 
 	    //Load model
-	    final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
-	    GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
+	    modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
+	    geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"bufferRing_clip_ocean-land.model");
 
 	    geomodel.setAnalysisExtent(extent);
 
@@ -721,7 +724,6 @@ GeoAlgorithm {
 			networkRing_lyr = (IVectorLayer) o.getOutputObject();
 			networkRing_lyr.open();
 			System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
-			m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
 			networkRing_lyr.close();
 		    }
 		}
@@ -729,18 +731,29 @@ GeoAlgorithm {
 		System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	    }
 
+	    //Se que el valor que me interesa para identificar el mar es el ultimo attribute del resultado
+	    if (networkRing_lyr != null) {
+		int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
+
+		networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
+		networkRing_lyr.open();
+		System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
+		networkRing_lyr.close();
+		m_OutputObjects.getOutput("RESULT_networkRing").setOutputObject(networkRing_lyr);
+
+		final IVectorLayer r_ring = getNewVectorLayer("RESULT_networkRing", Sextante.getText("RESULT_networkRing"),
+			networkRing_lyr.getShapeType(), networkRing_lyr.getFieldTypes(), networkRing_lyr.getFieldNames());
+
+		IFeatureIterator it = networkRing_lyr.iterator();
+		for (;it.hasNext();){
+		    r_ring.addFeature(it.next());
+		}
+		it.close();
+	    }
 	}
 
 	network_lyr.close();
 	network_lyr.removeFilters();
-
-	//S� que el valor que me interesa del mar es el �ltimo attribute
-	int last_attribute_idx = networkRing_lyr.getFieldCount()-1;
-	networkRing_lyr.addFilter(new SimpleAttributeVectorFilter(last_attribute_idx, "=", 1));
-	networkRing_lyr.open();
-	System.out.println("networkRing_lyr.feats: " +  networkRing_lyr.getShapesCount());
-	networkRing_lyr.close();
-
 
 	// END COASTAL
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1031,7 +1044,11 @@ GeoAlgorithm {
 		networkRing_lyr.open();
 		num_rings = networkRing_lyr.getShapesCount();
 		networkRing_lyr.close();
+
+		extent.addExtent(networkRing_lyr.getFullExtent());
 	    }
+
+	    factLyr.addFilter(new BoundingBoxFilter(extent));
 
 	    final IFeatureIterator iter1 = factLyr.iterator();
 	    for (int j = 0; iter1.hasNext(); j++) {
@@ -1058,7 +1075,7 @@ GeoAlgorithm {
 			final Geometry geom2 = feat2.getGeometry();
 			distance = geom1.distance(geom2);
 			if ((distance <= fa_radio) && (distance < min_dist)) {
-			    System.out.println("Pto red: " + k + " Distance: " + distance);
+			    System.out.println("Points: " + k + " Distance: " + distance);
 			    min_dist = distance;
 			    min_idx = k;
 			}
@@ -1071,7 +1088,7 @@ GeoAlgorithm {
 			    final Geometry geom3 = feat3.getGeometry();
 			    distance = geom1.distance(geom3);
 			    if ((distance <= fa_radio) && (distance < min_dist)) {
-				System.out.println("RING: " + k + " Distance: " + distance);
+				System.out.println("Rings: " + k + " Distance: " + distance);
 				min_dist = distance;
 				min_idx = k;
 			    }
@@ -1088,7 +1105,7 @@ GeoAlgorithm {
 			distance = geom1.distance(geom2);
 			if ((distance <= fa_radio)) {
 			    pt_has_fa_array[k] = true;
-			    System.out.println("Pto red: " + k + " Distance: " + distance);
+			    System.out.println("Points: " + k + " Distance: " + distance);
 			}
 		    }
 
@@ -1098,13 +1115,14 @@ GeoAlgorithm {
 			    final IFeature feat3 = iter3.next();
 			    if (feat3 == null) {
 				System.out.println("RING is NULL at: " + k );
+				//TODO I don't remenber why "k--"
 				k--;
 				continue;
 			    }
 			    final Geometry geom3 = feat3.getGeometry();
 			    distance = geom1.distance(geom3);
 			    if ((distance <= fa_radio)) {
-				System.out.println("RING: " + k + " Distance: " + distance);
+				System.out.println("Rings: " + k + " Distance: " + distance);
 				pt_has_fa_array[k] = true;
 			    }
 			}
@@ -1121,7 +1139,9 @@ GeoAlgorithm {
 		}
 		iter1.close();
 		iter2.close();
-		iter3.close();
+		if (iter3 != null) {
+		    iter3.close();
+		}
 	    }
 
 	    for (int h = 0; h < num_points; h++) {
@@ -1241,7 +1261,6 @@ GeoAlgorithm {
 		    vectLyr.getFieldNames(), new FileOutputChannel(m_OutputFactory.getTempVectorLayerFilename()), vectLyr.getCRS());
 	}
 	catch (final UnsupportedOutputChannelException e) {
-	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	    return null;
 	}
