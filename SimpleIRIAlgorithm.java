@@ -57,6 +57,8 @@ import es.unex.sextante.vectorTools.linesToEquispacedPoints.LinesToEquispacedPoi
 
 
 /**
+ * SEXTANTE va bien con la revision commit e2742da09632486ce8a4352b766bac454a27413c
+ * 
  * Estoy siguiendo las instruciones que hay en el DROPBOX de Concha To compile this algorithm it must be place on gridAnalysis
  * project of SEXTANTE.
  * 

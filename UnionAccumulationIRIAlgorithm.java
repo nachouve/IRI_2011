@@ -47,6 +47,7 @@ import es.unex.sextante.gui.settings.SextanteModelerSettings;
 import es.unex.sextante.outputs.Output;
 import es.unex.sextante.outputs.OutputVectorLayer;
 import es.unex.sextante.parameters.Parameter;
+import es.unex.sextante.vectorTools.snapPoints.SnapPointsAlgorithm;
 
 
 /**
@@ -87,6 +88,7 @@ GeoAlgorithm {
 	    String[] sValues = {"IRI", "IRI_DMA", "IRI_FACT"};
 	    m_Parameters.addSelection(IRI_TYPE, "Tipo de IRI a calcular", sValues );
 
+	    addOutputVectorLayer("GRID_UNION", "GRID_UNION", OutputVectorLayer.SHAPE_TYPE_POLYGON);
 	    addOutputVectorLayer("RESULT_ACC_IRI", "RESULT_ACC_IRI", OutputVectorLayer.SHAPE_TYPE_POLYGON);
 
 	} catch (RepeatedParameterNameException e) {
@@ -140,7 +142,7 @@ GeoAlgorithm {
 	for (int i = 0; i < iri_lyrs.length; i++) {
 	    IVectorLayer acc_iri = iri_lyrs[i];
 	    acc_iri.open();
-	    System.out.println(acc_iri.getName() + "  Num.Feats: " + acc_iri.getShapesCount());
+	    System.out.println(acc_iri.getName() + " -- Num.Feats: " + acc_iri.getShapesCount());
 	    extent2D = acc_iri.getFullExtent();
 
 	    if (full_extent2D == null){
@@ -151,13 +153,58 @@ GeoAlgorithm {
 	    acc_iri.close();
 	}
 
+	AnalysisExtent ext = getEnlargedExtend(full_extent2D, cell_size);
+	ext.enlargeOneCell();
+
+	//////////////////////////////////////
+	///// Snap all points
+
+	final SnapPointsAlgorithm alg = new SnapPointsAlgorithm();
+	ParametersSet params = alg.getParameters();
+
+	for (int i = 1; i < iri_lyrs.length; i++){
+	    for (int j = 0; j < i; j++){
+		String name_lyr = iri_lyrs[i].getName();
+		String name_lyr2 = iri_lyrs[j].getName();
+		params.getParameter(SnapPointsAlgorithm.LAYER).setParameterValue(iri_lyrs[i]);
+		params.getParameter(SnapPointsAlgorithm.SNAPTO).setParameterValue(iri_lyrs[j]);
+		params.getParameter(SnapPointsAlgorithm.TOLERANCE).setParameterValue(cell_size);
+
+		OutputObjectsSet oo = alg.getOutputObjects();
+		alg.setAnalysisExtent(ext);
+
+		System.out.println("------ SNAP " + i + " to " + j + "  " + name_lyr +" -> " + name_lyr2);
+
+		boolean bSucess = alg.execute(m_Task, m_OutputFactory);
+
+		if (bSucess) {
+		    iri_lyrs[i] = (IVectorLayer) oo.getOutput(SnapPointsAlgorithm.RESULT).getOutputObject();
+		    iri_lyrs[i].setName(name_lyr);
+
+		    iri_lyrs[i].open();
+		    System.out.println(name_lyr + ": " + iri_lyrs[i].getShapesCount());
+
+		    try {
+			iri_lyrs[i].postProcess();
+		    } catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		    }
+		    iri_lyrs[i].close();
+
+		}
+		else {
+		    return false;
+		}
+	    }
+	}
+
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"create_graticule.model");
 
-	AnalysisExtent ext = getEnlargedExtend(full_extent2D, cell_size);
 	geomodel.setAnalysisExtent(ext);
 
-	ParametersSet params = geomodel.getParameters();
+	params = geomodel.getParameters();
 
 	for (int j=0; j < params.getNumberOfParameters(); j++) {
 	    Parameter p = params.getParameter(j);
@@ -165,6 +212,12 @@ GeoAlgorithm {
 		params.getParameter(j).setParameterValue(new Double(cell_size));
 	    }
 	}
+
+	Class[] g_ft = {Integer.class};
+	String[] g_fn = {"ID"};
+
+	IVectorLayer aux1 = getNewVectorLayer("GRID_UNION", Sextante.getText("GRID_UNION"),
+		IVectorLayer.SHAPE_TYPE_POLYGON, g_ft, g_fn);
 
 	boolean bSucess = geomodel.execute(m_Task, m_OutputFactory);
 
@@ -178,13 +231,27 @@ GeoAlgorithm {
 		    graticule = (IVectorLayer) o.getOutputObject();
 		    graticule.open();
 		    System.out.println("graticule.feats: " +  graticule.getShapesCount());
-		    m_OutputObjects.getOutput("RESULT_ACC_IRI").setOutputObject(graticule);
 		    graticule.close();
+
+		    IFeatureIterator it = graticule.iterator();
+		    for (int k=0;it.hasNext();k++){
+			aux1.addFeature(it.next().getGeometry(), new Object[]{k});
+		    }
+		    it.close();
+		    m_OutputObjects.getOutput("GRID_UNION").setOutputObject(graticule);
 		}
 	    }
 	} else {
 	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
+
+	try {
+	    aux1.postProcess();
+	} catch (Exception e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	}
+
 
 	//IVectorLayer.SHAPE_TYPE_POLYGON;
 	//GENERATE FIELD/COLUMN ON THE RESULT
@@ -210,8 +277,8 @@ GeoAlgorithm {
 	    c_ascii++;
 	}
 
-	IVectorLayer aux = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
-		IVectorLayer.SHAPE_TYPE_POLYGON, fieldTypes, fieldNames);
+	//	IVectorLayer aux = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
+	//		IVectorLayer.SHAPE_TYPE_POLYGON, fieldTypes, fieldNames);
 
 	System.out.println("==============  START DETECTING IRI ACCUMUTATION POINTS ON THE GRID =========");
 
@@ -220,13 +287,12 @@ GeoAlgorithm {
 	    IVectorLayer acc_iri = iri_lyrs[i];
 
 	    System.out.println(" ---- "+ acc_iri.getName() +" ----");
-	    Object[] values = new Object[num_columns];
-	    //acc_iri.open();
+
 	    IFeatureIterator iter = acc_iri.iterator();
 	    for (;iter.hasNext();){
 		IFeature iri_feat = iter.next();
 		Geometry iri_geom = iri_feat.getGeometry();
-		IRecord iri_record = iri_feat.getRecord();
+
 		graticule.open();
 		IFeatureIterator g_iter = graticule.iterator();
 		boolean found = false;
@@ -234,17 +300,18 @@ GeoAlgorithm {
 		for (;g_iter.hasNext() && !found; cell_num++){
 		    IFeature cell = g_iter.next();
 		    Geometry cell_geom = cell.getGeometry();
-		    found = cell_geom.covers(iri_geom);
+		    found = cell_geom.intersects(iri_geom);
 		}
 		g_iter.close();
 		graticule.close();
 		if (found){
+		    System.out.println("addCellWithValues: " + acc_iri.getName() + " -- " + getValue("Xp", acc_iri, iri_feat));
 		    addCellWithValues(cell_map, cell_num, acc_iri, i, acc_iri.getName(), iri_feat, iri_lyrs.length);
 		}
 	    }
 	    iter.close();
 	    System.out.println("NUMBER OF CELLS WITH DATA: " +cell_map.size());
-	    //acc_iri.close();
+
 	}
 
 	final IVectorLayer result = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
@@ -253,9 +320,9 @@ GeoAlgorithm {
 
 	IFeatureIterator g_iter = graticule.iterator();
 	for (int i = 0; g_iter.hasNext(); i++){
-	    System.out.println(i +"/" +graticule.getShapesCount());
+	    //System.out.println(i +"/" +graticule.getShapesCount());
 	    if (cell_map.containsKey(i)){
-		System.out.println("Contains: " + i);
+		System.out.println("Contains: " + i +"/" +graticule.getShapesCount());
 		IFeature cell = g_iter.next();
 		Geometry geom = cell.getGeometry();
 		Object[] values = cell_map.get(i);
@@ -265,7 +332,7 @@ GeoAlgorithm {
 		g_iter.next();
 	    }
 	}
-	graticule.close();
+	//graticule.close();
 	g_iter.close();
 
 
@@ -279,6 +346,15 @@ GeoAlgorithm {
 	    values = cellMap.get(cellNum);
 	} else {
 	    values = new Object[1+(num_lyrs*5)];
+	    //starts on 2 for IRI, and "A_vertido" column
+	    for (int i = 2; i < values.length;){
+		values[i++] = -1;
+		values[i++] = -1;
+		values[i++] = -1;
+		values[i++] = -1;
+		//one more because N_vertido column
+		i++;
+	    }
 	}
 	int i = 1 + (lyrIdx * 5);
 	if (values[i] != null){
