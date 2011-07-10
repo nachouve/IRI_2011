@@ -36,6 +36,7 @@ import es.unex.sextante.dataObjects.IFeatureIterator;
 import es.unex.sextante.dataObjects.IRecord;
 import es.unex.sextante.dataObjects.IVectorLayer;
 import es.unex.sextante.exceptions.GeoAlgorithmExecutionException;
+import es.unex.sextante.exceptions.IteratorException;
 import es.unex.sextante.exceptions.NullParameterAdditionalInfoException;
 import es.unex.sextante.exceptions.NullParameterValueException;
 import es.unex.sextante.exceptions.RepeatedParameterNameException;
@@ -133,6 +134,32 @@ GeoAlgorithm {
 
     }
 
+
+    private void printAllLayers(){
+	System.out.println("\n     " );
+	for (int i = 0; i < iri_lyrs.length; i++) {
+	    String name_lyr = iri_lyrs[i].getName();
+	    iri_lyrs[i].open();
+	    System.out.println("\n    [["+ i+ "]] "+ name_lyr + ": " + iri_lyrs[i].getShapesCount());
+	    IFeatureIterator iter = iri_lyrs[i].iterator();
+	    for (;iter.hasNext();){
+		IFeature iri_feat;
+		try {
+		    iri_feat = iter.next();
+		    IRecord r = iri_feat.getRecord();
+		    System.out.println(iri_lyrs[i].getFieldName(0) + ": " + r.getValue(0));
+		    System.out.println(iri_lyrs[i].getFieldName(1) + ": " + r.getValue(1));
+		    System.out.println(iri_lyrs[i].getFieldName(2) + ": " + r.getValue(2));
+		} catch (IteratorException e) {
+		    e.printStackTrace();
+		}
+
+	    }
+	    iri_lyrs[i].close();
+	}
+	System.out.println("\n     " );
+    }
+
     @Override
     public boolean processAlgorithm() throws GeoAlgorithmExecutionException {
 	initVariables();
@@ -155,15 +182,20 @@ GeoAlgorithm {
 
 	AnalysisExtent ext = getEnlargedExtend(full_extent2D, cell_size);
 	ext.enlargeOneCell();
+	ext.enlargeOneCell();
+
+	System.out.println("------ ANTES DEL SNAP");
+	printAllLayers();
 
 	//////////////////////////////////////
 	///// Snap all points
 
-	final SnapPointsAlgorithm alg = new SnapPointsAlgorithm();
-	ParametersSet params = alg.getParameters();
 
 	for (int i = 1; i < iri_lyrs.length; i++){
 	    for (int j = 0; j < i; j++){
+		IVectorLayer result = null;
+		final SnapPointsAlgorithm alg = new SnapPointsAlgorithm();
+		ParametersSet params = alg.getParameters();
 		String name_lyr = iri_lyrs[i].getName();
 		String name_lyr2 = iri_lyrs[j].getName();
 		params.getParameter(SnapPointsAlgorithm.LAYER).setParameterValue(iri_lyrs[i]);
@@ -178,33 +210,37 @@ GeoAlgorithm {
 		boolean bSucess = alg.execute(m_Task, m_OutputFactory);
 
 		if (bSucess) {
-		    iri_lyrs[i] = (IVectorLayer) oo.getOutput(SnapPointsAlgorithm.RESULT).getOutputObject();
-		    iri_lyrs[i].setName(name_lyr);
+		    result = (IVectorLayer) oo.getOutput(SnapPointsAlgorithm.RESULT).getOutputObject();
+		    result.setName(name_lyr);
 
-		    iri_lyrs[i].open();
-		    System.out.println(name_lyr + ": " + iri_lyrs[i].getShapesCount());
+		    result.open();
+		    System.out.println(name_lyr + ": " + result.getShapesCount());
 
 		    try {
-			iri_lyrs[i].postProcess();
+			result.postProcess();
 		    } catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		    }
-		    iri_lyrs[i].close();
+		    result.close();
+		    iri_lyrs[i] = result;
 
-		}
-		else {
+		} else {
 		    return false;
 		}
 	    }
 	}
+
+	System.out.println("------ Despues del Snap");
+	printAllLayers();
+
 
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"create_graticule.model");
 
 	geomodel.setAnalysisExtent(ext);
 
-	params = geomodel.getParameters();
+	ParametersSet params = geomodel.getParameters();
 
 	for (int j=0; j < params.getNumberOfParameters(); j++) {
 	    Parameter p = params.getParameter(j);
@@ -293,8 +329,8 @@ GeoAlgorithm {
 		IFeature iri_feat = iter.next();
 		Geometry iri_geom = iri_feat.getGeometry();
 
-		graticule.open();
-		IFeatureIterator g_iter = graticule.iterator();
+		aux1.open();
+		IFeatureIterator g_iter = aux1.iterator();
 		boolean found = false;
 		int cell_num = 0;
 		for (;g_iter.hasNext() && !found; cell_num++){
@@ -303,9 +339,9 @@ GeoAlgorithm {
 		    found = cell_geom.intersects(iri_geom);
 		}
 		g_iter.close();
-		graticule.close();
+		aux1.close();
 		if (found){
-		    System.out.println("addCellWithValues: " + acc_iri.getName() + " -- " + getValue("Xp", acc_iri, iri_feat));
+		    System.out.println("cell_num: " + cell_num+"  addCellWithValues: " + acc_iri.getName() + " -- " + getValue("Xp", acc_iri, iri_feat));
 		    addCellWithValues(cell_map, cell_num, acc_iri, i, acc_iri.getName(), iri_feat, iri_lyrs.length);
 		}
 	    }
@@ -365,6 +401,10 @@ GeoAlgorithm {
 	values[i++] = getValue("IRI", accLayer, iriFeat);
 	values[i++] = getValue("IRI_fact", accLayer, iriFeat);
 	values[i++] = getValue("IRI_dma", accLayer, iriFeat);
+
+	for (int j = 0; j < values.length; j++){
+	    System.out.println(j + ": "+values[j]);
+	}
 
 	cellMap.put(cellNum, values);
     }
