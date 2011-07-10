@@ -470,10 +470,8 @@ GeoAlgorithm {
     @Override
     public boolean processAlgorithm() throws GeoAlgorithmExecutionException {
 	initVariables();
-	final int i = 0;
 
 	final int heAttr = m_Parameters.getParameterValueAsInt(HE_ATTRIB);
-	//vertidoLyr.addFilter(new BoundingBoxFilter(m_AnalysisExtent));
 
 	//////////////////////
 	// RASTERIZE
@@ -483,10 +481,9 @@ GeoAlgorithm {
 	params.getParameter(RasterizeVectorLayerAlgorithm.FIELD).setParameterValue(heAttr);
 
 	OutputObjectsSet oo = alg.getOutputObjects();
-	//final Output output = oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT);
 
 	AnalysisExtent extent = new AnalysisExtent(demLyr);
-	extent.setCellSize(demLyr.getLayerCellSize());
+	//extent.setCellSize(demLyr.getLayerCellSize());
 	extent.enlargeOneCell();
 
 	alg.setAnalysisExtent(extent);
@@ -498,12 +495,8 @@ GeoAlgorithm {
 	IRasterLayer resultRasterize = null;
 
 	if (bSucess) {
-	    //output = oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT);
-	    //m_OutputObjects.getOutput(RESULT).setOutputObject(output.getOutputObject());
-
 	    resultRasterize = (IRasterLayer) oo.getOutput(RasterizeVectorLayerAlgorithm.RESULT).getOutputObject();
 	    m_OutputObjects.getOutput("RESULT_rasterize_vert").setOutputObject(resultRasterize);
-	    //return true;
 	}
 	else {
 	    return false;
@@ -514,6 +507,7 @@ GeoAlgorithm {
 	//////////////////////
 	// CHANNEL NETWORK
 
+	System.out.println("-------------------------- CHANNEL NETWORK");
 	//Load model
 	String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"iri_channel_step2.model");
@@ -535,23 +529,12 @@ GeoAlgorithm {
 	    }
 	}
 
-	//	demLyr = m_Parameters.getParameterValueAsRasterLayer(this.DEM);
-	//
-	//	final IRIChannelNetworkAlgorithm algCN = new IRIChannelNetworkAlgorithm();
-	//	params = algCN.getParameters();
-	//	params.getParameter(ChannelNetworkAlgorithm.DEM).setParameterValue(demLyr);
-	//	params.getParameter(ChannelNetworkAlgorithm.THRESHOLDLAYER).setParameterValue(resultRasterize);
-	//	params.getParameter(ChannelNetworkAlgorithm.THRESHOLD).setParameterValue(0);
-	//	params.getParameter(ChannelNetworkAlgorithm.METHOD).setParameterValue(0); //Usar ChannelNetworkAlgorithm.METHOD_GREATER_THAN
-
 	oo = geomodel.getOutputObjects();
 
 	extent = new AnalysisExtent(demLyr);
-	extent.setCellSize(demLyr.getLayerCellSize());
 	extent.enlargeOneCell();
 
 	geomodel.setAnalysisExtent(extent);
-	System.out.println("-------------------------- CHANNEL NETWORK");
 
 	bSucess = geomodel.execute(m_Task, m_OutputFactory);
 	IVectorLayer resultNetwork = null;
@@ -566,7 +549,7 @@ GeoAlgorithm {
 		if (o.getDescription().equalsIgnoreCase("IRI_river")){
 		    resultNetwork = (IVectorLayer) o.getOutputObject();
 		    resultNetwork.open();
-		    System.out.println("resultNetwork.feats: " +  resultNetwork.getShapesCount());
+		    System.out.println(">>>>>>>>> resultNetwork.feats: " +  resultNetwork.getShapesCount());
 		    m_OutputObjects.getOutput("RESULT_network").setOutputObject(resultNetwork);
 		    resultNetwork.close();
 		}
@@ -574,7 +557,6 @@ GeoAlgorithm {
 	} else {
 	    System.out.println("NOT SUCCESS THE GEOMODEL.EXECUTE!!!!!!!!!!!");
 	}
-
 
 	//To avoid more than one network
 	resultNetwork.addFilter(new FirstFeaturesVectorFilter(1));
@@ -622,6 +604,7 @@ GeoAlgorithm {
 
 	//////////////////////
 	// AUTOINCREMENT and GET ONLY ???50??? points
+	System.out.println("-------------------------- ONLY 50 NETWORK POINTS");
 
 	final AutoincrementValueAlgorithm algAuto = new AutoincrementValueAlgorithm();
 
@@ -639,13 +622,9 @@ GeoAlgorithm {
 
 	algAuto.setAnalysisExtent(extent);
 
-	System.out.println("-------------------------- ONLY 50 NETWORK POINTS");
-
 	bSucess = algAuto.execute(m_Task, m_OutputFactory);
 
 	IVectorLayer resultNet_Points2 = null;
-
-	IVectorLayer vectLyr = null;
 
 	if (bSucess) {
 
@@ -767,10 +746,7 @@ GeoAlgorithm {
 		    r_ring.addFeature(it.next());
 		}
 		it.close();
-
 	    }
-
-
 	}
 
 	network_lyr.close();
