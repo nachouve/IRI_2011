@@ -1100,13 +1100,13 @@ GeoAlgorithm {
 	    for (int h = 0; h < num_points; h++) {
 		if (pt_has_fa_array[h]) {
 		    if (factLyr.getShapeType() == IVectorLayer.SHAPE_TYPE_POINT) {
-			iri_fa_array[h] = calculateIRI_point(h * sample_dist, sample_dist, fa_weight, perc_fact);
+			iri_fa_array[h] = calculateIRI_point(h * sample_dist, sample_dist, fa_weight);
 		    }
 		    else if (factLyr.getShapeType() == IVectorLayer.SHAPE_TYPE_POLYGON) {
 			iri_fa_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, fa_weight);
 		    }
 		    else if (factLyr.getShapeType() == IVectorLayer.SHAPE_TYPE_LINE) {
-			iri_fa_array[h] = calculateIRI_line(h * sample_dist, sample_dist, fa_weight, perc_fact);
+			iri_fa_array[h] = calculateIRI_line(h * sample_dist, sample_dist, fa_weight);
 		    }
 		    else {
 			System.out.println(" EEEEEEEEEEEEEEEERRRRRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOORRRRRRRRRRRRRRRRRR ");
@@ -1214,19 +1214,19 @@ GeoAlgorithm {
 
 	    for (int h = 0; h < num_points; h++) {
 		if (status_dma_array[h] == 'A') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoA_w);
+		    iri_dma_array[h] = calculateIRI_DMA_polygon(h * sample_dist, sample_dist, ecoA_w);
 		}
 		else if (status_dma_array[h] == 'B') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoB_w);
+		    iri_dma_array[h] = calculateIRI_DMA_polygon(h * sample_dist, sample_dist, ecoB_w);
 		}
 		else if (status_dma_array[h] == 'C') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoC_w);
+		    iri_dma_array[h] = calculateIRI_DMA_polygon(h * sample_dist, sample_dist, ecoC_w);
 		}
 		else if (status_dma_array[h] == 'D') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoD_w);
+		    iri_dma_array[h] = calculateIRI_DMA_polygon(h * sample_dist, sample_dist, ecoD_w);
 		}
 		else if (status_dma_array[h] == 'E') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoE_w);
+		    iri_dma_array[h] = calculateIRI_DMA_polygon(h * sample_dist, sample_dist, ecoE_w);
 		}
 		System.out.println(h + " IRI_DMA: " + iri_dma_array[h] + "  (" + status_dma_array[h] + ")");
 	    }
@@ -1331,8 +1331,7 @@ GeoAlgorithm {
     //percFact
     private double calculateIRI_point(final int xp,
 	    final int dist_points,
-	    final int weight,
-	    final int percent_fact) {
+	    final int weight) {
 
 	return calculateIRI_polygon(xp, dist_points, weight);
     }
@@ -1340,8 +1339,7 @@ GeoAlgorithm {
 
     private double calculateIRI_line(final int xp,
 	    final int dist_points,
-	    final int weight,
-	    final int percent_fact) {
+	    final int weight) {
 
 	return calculateIRI_polygon(xp, dist_points, weight);
     }
@@ -1352,7 +1350,7 @@ GeoAlgorithm {
 	    final int weight) {
 
 	double iri_he_xp = iri_values[xp/dist_points][0];
-	double value = iri_he_xp * (weight/he_weight);
+	double value = iri_he_xp * ((double)weight/he_weight);
 	return value;
     }
 
