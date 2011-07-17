@@ -936,53 +936,6 @@ GeoAlgorithm {
 
 	network_lyr.close();
 
-	/*System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Accumulated");
-
-
-	geom = firstfeature.getGeometry();
-
-	for (int i1 = 0; i1 < iri_f1_array.length; i1++) {
-
-	    iri_values[i1][2] =  iri_f1_array[i1];
-	    iri_values[i1][2] +=  iri_f2_array[i1];
-	    iri_values[i1][2] +=  iri_f3_array[i1];
-	    iri_values[i1][2] +=  iri_f4_array[i1];
-	    iri_values[i1][2] +=  iri_f5_array[i1];
-	    iri_values[i1][2] +=  iri_f6_array[i1];
-	    iri_values[i1][2] +=  iri_f7_array[i1];
-	    iri_values[i1][2] +=  iri_f8_array[i1];
-	    iri_values[i1][2] +=  iri_f9_array[i1];
-	    iri_values[i1][2] +=  iri_f10_array[i1];
-	    iri_values[i1][2] +=  iri_f11_array[i1];
-	    iri_values[i1][3] = (Double) dma_status_iri_array[1][i1];
-
-	    //IRI_FACT
-	    iri_values[i1][4] = iri_values[i1][0] + iri_values[i1][1] + iri_values[i1][2];
-
-	    //IRI TOTAL
-	    iri_values[i1][5] = iri_values[i1][4] + iri_values[i1][3];
-
-	    //IMPRIMO LOS DATOS COMO COMPROBACIÓN CUTRONGA
-	    System.out.println("-------------------------- IRI VALUES FOR POINT " + i1);
-	    System.out.println("--- HE: " + iri_values[i1][0]);
-	    System.out.println("--- DIL: " + iri_values[i1][1]);
-	    System.out.println("--- FA: " + iri_values[i1][2]);
-	    System.out.println("--- DMA: " + iri_values[i1][3]);
-	    System.out.println("--- FACT: " + iri_values[i1][4]);
-	    System.out.println("--- TOTAL: " + iri_values[i1][5]);
-	}
-
-		geom = iter_ptos_vert.next().getGeometry();
-
-		final Object[] attr = new Object[iri_values.length];
-		for (int i1 = 0; i1 < iri_values.length; i1++) {
-		    attr[i1] = new Double(iri_values[p][i1]);
-		}
-
-		result2.addFeature(geom, attr);
-		p++;
-	}*/
-
 	return !m_Task.isCanceled();
     }
 
