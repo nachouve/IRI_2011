@@ -191,8 +191,6 @@ GeoAlgorithm {
 
 	//////////////////////////////////////
 	///// Snap all points
-
-
 	for (int i = 1; i < iri_lyrs.length; i++){
 	    for (int j = 0; j < i; j++){
 		IVectorLayer result = null;
@@ -387,7 +385,7 @@ GeoAlgorithm {
 
     private Object[] sumarizeIRI(Object[] values) {
 	// i = i + 2... because Xp y IRI_Layer_Name columns
-	for (int i = num_first_cols + 2; i < values.length; i = i + 2){
+	for (int i = num_first_cols + 2; i < values.length; i = i + 3){
 
 	    if ((Double)values[i] != -1){
 		// IRI
@@ -421,12 +419,12 @@ GeoAlgorithm {
 
 	    //starts on 2 for IRI, and "A_vertido" column
 	    for (int i = num_first_cols; i < values.length;){
-		values[i++] = -1;
-		values[i++] = -1;
-		values[i++] = -1;
-		values[i++] = -1;
+		values[i++] = "-1";
+		values[i++] = -1.0;
+		values[i++] = -1.0;
+		values[i++] = -1.0;
+		values[i++] = -1.0;
 		//one more because N_vertido column
-		i++;
 	    }
 	}
 	int i = num_first_cols + (lyrIdx * 5);
@@ -439,9 +437,9 @@ GeoAlgorithm {
 	values[i++] = getValue("IRI_fact", accLayer, iriFeat);
 	values[i++] = getValue("IRI_dma", accLayer, iriFeat);
 
-	for (int j = 0; j < values.length; j++){
-	    System.out.println(j + ": "+values[j]);
-	}
+	//	for (int j = 0; j < values.length; j++){
+	//	    System.out.println(j + ": "+values[j]);
+	//	}
 
 	cellMap.put(cellNum, values);
     }
