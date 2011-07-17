@@ -1103,7 +1103,7 @@ GeoAlgorithm {
 			iri_fa_array[h] = calculateIRI_point(h * sample_dist, sample_dist, fa_weight, perc_fact);
 		    }
 		    else if (factLyr.getShapeType() == IVectorLayer.SHAPE_TYPE_POLYGON) {
-			iri_fa_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, fa_weight, perc_fact);
+			iri_fa_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, fa_weight);
 		    }
 		    else if (factLyr.getShapeType() == IVectorLayer.SHAPE_TYPE_LINE) {
 			iri_fa_array[h] = calculateIRI_line(h * sample_dist, sample_dist, fa_weight, perc_fact);
@@ -1138,8 +1138,21 @@ GeoAlgorithm {
 	}
 
 	final AnalysisExtent extent = new AnalysisExtent(network_lyr);
-	dmaLyr.addFilter(new BoundingBoxFilter(extent));
+
 	try {
+	    boolean coastal_rings = (networkRing_lyr != null);
+	    int num_rings = 0;
+
+	    if (coastal_rings){
+		networkRing_lyr.open();
+		num_rings = networkRing_lyr.getShapesCount();
+		networkRing_lyr.close();
+
+		extent.addExtent(networkRing_lyr.getFullExtent());
+	    }
+
+	    dmaLyr.addFilter(new BoundingBoxFilter(extent));
+
 	    final IFeatureIterator iter1 = dmaLyr.iterator();
 	    for (int j = 0; iter1.hasNext(); j++) {
 		final IFeature feat1 = iter1.next();
@@ -1153,41 +1166,67 @@ GeoAlgorithm {
 
 		network_lyr.open();
 		final IFeatureIterator iter2 = network_lyr.iterator();
+
+		IFeatureIterator iter3 = null; // Coastal rings iterator
+		if (coastal_rings){
+		    iter3 = networkRing_lyr.iterator();
+		}
+
 		double distance = Double.MAX_VALUE;
 		final double min_dist = Double.MAX_VALUE;
 		final int min_idx = -1;
 		// When it is a polygon/linestring layer gets all networkchannel points on the buffer
 		// Gets the worst ecological status
-		for (int k = 0; iter2.hasNext(); k++) {
+		int k = 0;
+		for (; iter2.hasNext(); k++) {
 		    final IFeature feat2 = iter2.next();
 		    final Geometry geom2 = feat2.getGeometry();
 		    distance = geom1.distance(geom2);
 		    if ((distance <= fa_radio) && (status_char > status_dma_array[k])) {
 			status_dma_array[k] = status_char;
-			System.out.println("Pto red: " + k + " Distance: " + distance + "  ***ECO_STATUS***: " + status);
+			System.out.println("Pto_dma: " + k + " Distance: " + distance + "  ***ECO_STATUS***: " + status);
 		    }
 		}
+
+		// Now coastal rings, if exists
+		if (k < num_points && coastal_rings) {
+		    for (; k < num_points && iter3.hasNext(); k++){
+			final IFeature feat3 = iter3.next();
+			if (feat3 == null) {
+			    continue;
+			}
+			final Geometry geom3 = feat3.getGeometry();
+			distance = geom1.distance(geom3);
+			if ((distance <= fa_radio) && (status_char > status_dma_array[k])) {
+			    status_dma_array[k] = status_char;
+			    System.out.println("RING_dma: " + k + " Distance: " + distance + "  ***ECO_STATUS***: " + status);
+			}
+		    }
+		}
+
 		network_lyr.close();
 		iter1.close();
 		iter2.close();
+		if (iter3 != null) {
+		    iter3.close();
+		}
 	    }
-
 
 	    for (int h = 0; h < num_points; h++) {
 		if (status_dma_array[h] == 'A') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoA_w, perc_dma);
+		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoA_w);
 		}
 		else if (status_dma_array[h] == 'B') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoB_w, perc_dma);
+		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoB_w);
 		}
 		else if (status_dma_array[h] == 'C') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoC_w, perc_dma);
+		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoC_w);
 		}
 		else if (status_dma_array[h] == 'D') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoD_w, perc_dma);
+		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoD_w);
 		}
 		else if (status_dma_array[h] == 'E') {
-		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoE_w, perc_dma);
+		    iri_dma_array[h] = calculateIRI_polygon(h * sample_dist, sample_dist, ecoE_w);
 		}
 		System.out.println(h + " IRI_DMA: " + iri_dma_array[h] + "  (" + status_dma_array[h] + ")");
 	    }
@@ -1295,7 +1334,7 @@ GeoAlgorithm {
 	    final int weight,
 	    final int percent_fact) {
 
-	return calculateIRI_polygon(xp, dist_points, weight, percent_fact);
+	return calculateIRI_polygon(xp, dist_points, weight);
     }
 
 
@@ -1304,22 +1343,29 @@ GeoAlgorithm {
 	    final int weight,
 	    final int percent_fact) {
 
-	return calculateIRI_polygon(xp, dist_points, weight, percent_fact);
+	return calculateIRI_polygon(xp, dist_points, weight);
     }
 
 
     private double calculateIRI_polygon(final int xp,
 	    final int dist_points,
-	    final int weight,
-	    final int percent_fact) {
+	    final int weight) {
 
-	double he_xp = iri_values[xp/dist_points][0];
-	final double constant = -1.011233793;
-	final double dist_2 = ((double) dist_points / 2);
-	final double mul_fact1 = ((double) (percent_fact * weight) / 100);
-	double value = he_xp * (mul_fact1/he_weight);
+	double iri_he_xp = iri_values[xp/dist_points][0];
+	double value = iri_he_xp * (weight/he_weight);
 	return value;
     }
+
+    private double calculateIRI_DMA_polygon(final int xp,
+	    final int dist_points,
+	    final int weight) {
+
+	double aux_he_xp = iri_values[xp/dist_points][0]/perc_fact;
+	double mul_fact1 = ((double) (perc_dma * weight) / 100);
+	double value = aux_he_xp * (mul_fact1/he_weight);
+	return value;
+    }
+
 
 
     private double sumArray(final double[] array,
