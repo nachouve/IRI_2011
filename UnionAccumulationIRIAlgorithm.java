@@ -73,6 +73,8 @@ GeoAlgorithm {
     public int cell_size = 50;
     public String iri_column_name = "";
 
+    private int num_first_cols;
+
     @Override
     public void defineCharacteristics() {
 
@@ -184,8 +186,8 @@ GeoAlgorithm {
 	ext.enlargeOneCell();
 	ext.enlargeOneCell();
 
-	System.out.println("------ ANTES DEL SNAP");
-	printAllLayers();
+	//System.out.println("------ ANTES DEL SNAP");
+	//printAllLayers();
 
 	//////////////////////////////////////
 	///// Snap all points
@@ -231,8 +233,8 @@ GeoAlgorithm {
 	    }
 	}
 
-	System.out.println("------ Despues del Snap");
-	printAllLayers();
+	//System.out.println("------ Despues del Snap");
+	//printAllLayers();
 
 
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
@@ -291,14 +293,21 @@ GeoAlgorithm {
 
 	//IVectorLayer.SHAPE_TYPE_POLYGON;
 	//GENERATE FIELD/COLUMN ON THE RESULT
-	int num_columns = (iri_lyrs.length * 5) + 1;
+	num_first_cols = 3;
+
+	int num_columns = (iri_lyrs.length * 5) + num_first_cols;
 	String[] fieldNames = new String[num_columns];
 	Class[]  fieldTypes = new Class[num_columns];
 
 	fieldNames[0] = "IRI";
 	fieldTypes[0] = Double.class;
+	fieldNames[1] = "IRI_fact";
+	fieldTypes[1] = Double.class;
+	fieldNames[2] = "IRI_dma";
+	fieldTypes[2] = Double.class;
+
 	char c_ascii = 'A';
-	for (int i = 1, j = 0; j < iri_lyrs.length; j++){
+	for (int i = num_first_cols, j = 0; j < iri_lyrs.length; j++){
 	    fieldNames[i] = String.valueOf(c_ascii)+"_vertido";
 	    fieldTypes[i++] = String.class;
 	    fieldNames[i] = String.valueOf(c_ascii)+"_xp";
@@ -362,6 +371,7 @@ GeoAlgorithm {
 		IFeature cell = g_iter.next();
 		Geometry geom = cell.getGeometry();
 		Object[] values = cell_map.get(i);
+		values = sumarizeIRI(values);
 		result.addFeature(geom, values);
 		cell_map.remove(i);
 	    } else {
@@ -375,15 +385,42 @@ GeoAlgorithm {
 	return !m_Task.isCanceled();
     }
 
+    private Object[] sumarizeIRI(Object[] values) {
+	// i = i + 2... because Xp y IRI_Layer_Name columns
+	for (int i = num_first_cols + 2; i < values.length; i = i + 2){
+
+	    if ((Double)values[i] != -1){
+		// IRI
+		values[0] = (Double)values[0] + (Double)values[i];
+	    }
+	    i++;
+	    if ((Double)values[i] != -1){
+		// IRI_fact
+		values[1] = (Double)values[1] + (Double)values[i];
+	    }
+	    i++;
+	    if ((Double)values[i] != -1){
+		// IRI_dma
+		values[2] = (Double)values[2] + (Double)values[i];
+	    }
+	}
+	return values;
+    }
+
+
     private void addCellWithValues(HashMap<Integer, Object[]> cellMap, int cellNum, IVectorLayer accLayer, int lyrIdx, String name_lyr, IFeature iriFeat, int num_lyrs) {
 
 	Object[] values;
 	if (cellMap.containsKey(cellNum)){
 	    values = cellMap.get(cellNum);
 	} else {
-	    values = new Object[1+(num_lyrs*5)];
+	    values = new Object[num_first_cols+(num_lyrs*5)];
+	    for (int i = 0; i < num_first_cols;){
+		values[i++] = 0.0;
+	    }
+
 	    //starts on 2 for IRI, and "A_vertido" column
-	    for (int i = 2; i < values.length;){
+	    for (int i = num_first_cols; i < values.length;){
 		values[i++] = -1;
 		values[i++] = -1;
 		values[i++] = -1;
@@ -392,7 +429,7 @@ GeoAlgorithm {
 		i++;
 	    }
 	}
-	int i = 1 + (lyrIdx * 5);
+	int i = num_first_cols + (lyrIdx * 5);
 	if (values[i] != null){
 	    System.out.println("22222222222222222222222222222222222     OH OH Parece que hay 2 puntos en la misma celda     2222222222222222222222222222222222");
 	}
