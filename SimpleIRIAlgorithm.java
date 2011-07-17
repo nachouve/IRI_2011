@@ -1135,8 +1135,21 @@ GeoAlgorithm {
 	}
 
 	final AnalysisExtent extent = new AnalysisExtent(network_lyr);
-	dmaLyr.addFilter(new BoundingBoxFilter(extent));
+
 	try {
+	    boolean coastal_rings = (networkRing_lyr != null);
+	    int num_rings = 0;
+
+	    if (coastal_rings){
+		networkRing_lyr.open();
+		num_rings = networkRing_lyr.getShapesCount();
+		networkRing_lyr.close();
+
+		extent.addExtent(networkRing_lyr.getFullExtent());
+	    }
+
+	    dmaLyr.addFilter(new BoundingBoxFilter(extent));
+
 	    final IFeatureIterator iter1 = dmaLyr.iterator();
 	    for (int j = 0; iter1.hasNext(); j++) {
 		final IFeature feat1 = iter1.next();
@@ -1150,25 +1163,50 @@ GeoAlgorithm {
 
 		network_lyr.open();
 		final IFeatureIterator iter2 = network_lyr.iterator();
+
+		IFeatureIterator iter3 = null; // Coastal rings iterator
+		if (coastal_rings){
+		    iter3 = networkRing_lyr.iterator();
+		}
+
 		double distance = Double.MAX_VALUE;
 		final double min_dist = Double.MAX_VALUE;
 		final int min_idx = -1;
 		// When it is a polygon/linestring layer gets all networkchannel points on the buffer
 		// Gets the worst ecological status
-		for (int k = 0; iter2.hasNext(); k++) {
+		int k = 0;
+		for (;iter2.hasNext(); k++) {
 		    final IFeature feat2 = iter2.next();
 		    final Geometry geom2 = feat2.getGeometry();
 		    distance = geom1.distance(geom2);
 		    if ((distance <= fa_radio) && (status_char > status_dma_array[k])) {
 			status_dma_array[k] = status_char;
-			System.out.println("Pto red: " + k + " Distance: " + distance + "  ***ECO_STATUS***: " + status);
+			System.out.println("Pto_dma: " + k + " Distance: " + distance + "  ***ECO_STATUS***: " + status);
+		    }
+		}
+
+		// Now coastal rings, if exists
+		if (k < num_points && coastal_rings) {
+		    for (; k < num_points && iter3.hasNext(); k++){
+			final IFeature feat3 = iter3.next();
+			if (feat3 == null) {
+			    continue;
+			}
+			final Geometry geom3 = feat3.getGeometry();
+			distance = geom1.distance(geom3);
+			if ((distance <= fa_radio) && (status_char > status_dma_array[k])) {
+			    status_dma_array[k] = status_char;
+			    System.out.println("RING_dma: " + k + " Distance: " + distance + "  ***ECO_STATUS***: " + status);
+			}
 		    }
 		}
 		network_lyr.close();
 		iter1.close();
 		iter2.close();
+		if (iter3 != null) {
+		    iter3.close();
+		}
 	    }
-
 
 	    for (int h = 0; h < num_points; h++) {
 		if (status_dma_array[h] == 'A') {
