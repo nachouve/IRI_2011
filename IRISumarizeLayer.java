@@ -23,7 +23,7 @@ public class IRISumarizeLayer {
 	"IRI_c_p",
 	// IRI de espacios naturales para cada punto
 	"IRI_e_n",
-	// IRI de zonas piscícolas para cada punto
+	// IRI de zonas piscicolas para cada punto
 	"IRI_z_p",
 	// IRI de playas marinas para cada punto
 	"IRI_p_m",
@@ -37,10 +37,15 @@ public class IRISumarizeLayer {
 	"IRI_b",
 	// IRI de zonas de marisqueo para cada punto
 	"IRI_z_m",
-	// IRI de piscifactorías para cada punto
+	// IRI de piscifactorias para cada punto
 	"IRI_p",
 	// cuenca_km2
-    "cuenca_km2"            };
+	"cuenca_km2",
+	// HAB_EQUIV
+	"hab_equiv",
+	// ID del vertido (nombre),
+	"name_vert"
+    };
 
     public static Class[]  fieldTypes = new Class[] {
 	// suma de IRI_fact e IRI_dma
@@ -76,6 +81,11 @@ public class IRISumarizeLayer {
 	//IRI_p IRI de piscifactorías para cada punto
 	Double.class,
 	//Cuenca_km2
-	Double.class            };
+	Double.class,
+	// HAB_EQUIV
+	Integer.class,
+	// ID vertido
+	String.class
+    };
 
 }

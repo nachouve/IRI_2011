@@ -76,6 +76,7 @@ GeoAlgorithm {
     public static final String  DEM                         = "MDT";
     public static final String  ACCFLOW                     = "ACCFLOW";
     public static final String  HE_ATTRIB                   = "HE_ATTRIB";
+    public static final String  ID_ATTRIB                   = "ID_ATTRIB";
 
     public static final String  RESULT                      = "RESULT";
 
@@ -122,6 +123,8 @@ GeoAlgorithm {
     private static final String HE_WEIGHT                   = "HE_WEIGHT";
     private static final String DIL_WEIGHT                  = "DIL_WEIGHT";
 
+    //ID o nombre del Vertido
+    private String ID_VERTIDO			= "";
 
     //Habitantes equivalentes
     private int                 he_weight                   = 0;
@@ -209,6 +212,7 @@ GeoAlgorithm {
 
     //ARRAY PARA ALMACENAR IRI_HE, IRI_DIL, IRI_FA, IRI_DMA, IRI_FACT E IRI_TOTAL
     double[][]                  iri_values;
+    double[]                  	watershed_km2;
 
 
     @Override
@@ -223,8 +227,8 @@ GeoAlgorithm {
 	    m_Parameters.addInputVectorLayer(VERTIDO, Sextante.getText("Vertidos"), AdditionalInfoVectorLayer.SHAPE_TYPE_POINT, true);
 
 	    try {
+		m_Parameters.addTableField(ID_ATTRIB, "ID Vertido", VERTIDO);
 		m_Parameters.addTableField(HE_ATTRIB, "Atributo Hab. Equiv.", VERTIDO);
-		//m_Parameters.addTableField(HE_ATTRIB, "Atributo Hab. Equiv.", VERTIDOS, true);
 	    }
 	    catch (final UndefinedParentParameterNameException e) {
 		e.printStackTrace();
@@ -315,13 +319,13 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(SEARCH_FACTOR_RADIO, "Radio para buscar factores amb.", 100,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    //Par�metros para el c�lculo de la diluci�n
-	    //Tambi�n llamado "C_mez"
+	    //Parametros para el calculo de la dilucion
+	    //Tambien llamado "C_mez"
 	    m_Parameters.addNumericalValue(MAX_DBO_after,
-		    "Concentraci�n de DBO m�xima permitida del r�o despu�s del vertido, en ppm", 6.0,
+		    "Concentracion de DBO maxima permitida del rio despues del vertido, en ppm", 6.0,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_DOUBLE);
-	    //Tambi�n llamado "C_rio"
-	    m_Parameters.addNumericalValue(DBO_before, "Concentraci�n de DBO del r�o antes del vertido, en ppm", 3.0,
+	    //Tambien llamado "C_rio"
+	    m_Parameters.addNumericalValue(DBO_before, "Concentracion de DBO del rio antes del vertido, en ppm", 3.0,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_DOUBLE);
 
 	    //Importancia de los dos tipos de IRI
@@ -380,6 +384,12 @@ GeoAlgorithm {
 		    e.printStackTrace();
 		}
 	    }
+	    iter.close();
+
+	    vertidoLyr.open();
+	    ID_VERTIDO = (String)getFirstFeature(vertidoLyr).getRecord().getValue(m_Parameters.getParameterValueAsInt(ID_ATTRIB));
+	    ID_VERTIDO = ID_VERTIDO.replaceAll(" ", "-");
+	    vertidoLyr.close();
 
 	    capt_existLyr = m_Parameters.getParameterValueAsVectorLayer(captacions_existentes);
 	    //podemos usar fa1_w
@@ -439,6 +449,7 @@ GeoAlgorithm {
 	    sample_dist = m_Parameters.getParameterValueAsInt(SAMPLE_DIST);
 	    num_points = (MAX_IRI_DIST / sample_dist);
 	    iri_values = new double[num_points][6];
+	    watershed_km2 = new double[num_points];
 
 	    ecoA_w = m_Parameters.getParameterValueAsInt("ecoW_A");
 	    ecoB_w = m_Parameters.getParameterValueAsInt("ecoW_B");
@@ -761,34 +772,40 @@ GeoAlgorithm {
 
 	//////////////////////
 	// CALCULAR MAX WATERSHED
-
 	final int watershed_dist = m_Parameters.getParameterValueAsInt(WATERSHED_AREA_RADIO);
 	final IRasterLayer accflow = m_Parameters.getParameterValueAsRasterLayer(ACCFLOW);
 
-	final IFeature firstfeature = getFirstFeature(vertidoLyr);
-	Geometry geom = firstfeature.getGeometry().buffer(watershed_dist);
-	final Envelope env = geom.getEnvelopeInternal();
+	network_lyr.open();
+	IFeatureIterator iter = network_lyr.iterator();
+	for (int h = 0; h < num_points && iter.hasNext(); h++) {
 
-	extent = new AnalysisExtent();
-	final boolean recalculate_cellsize = true;
-	extent.setXRange(env.getMinX(), env.getMaxX(), recalculate_cellsize);
-	extent.setYRange(env.getMinY(), env.getMaxY(), recalculate_cellsize);
-	extent.setCellSize(25.);
+	    final IFeature feature = iter.next();
+	    Geometry geom = feature.getGeometry().buffer(watershed_dist);
+	    final Envelope env = geom.getEnvelopeInternal();
 
-	//extent.enlargeOneCell();
+	    extent = new AnalysisExtent();
+	    final boolean recalculate_cellsize = true;
+	    extent.setXRange(env.getMinX(), env.getMaxX(), recalculate_cellsize);
+	    extent.setYRange(env.getMinY(), env.getMaxY(), recalculate_cellsize);
+	    extent.setCellSize(accflow.getLayerCellSize());
 
-	accflow.open();
-	accflow.setWindowExtent(extent);
+	    //extent.enlargeOneCell();
 
-	final double max_value = accflow.getMaxValue();
-	final double cell_size_km = (accflow.getLayerCellSize() / 1000);
-	WATERSHED_KM2 = max_value * cell_size_km * cell_size_km;
-	System.out.println("-----------> Max value accflow: " + max_value);
-	System.out.println("-----------> WATERSHED_km2: " + WATERSHED_KM2);
-	System.out.println(extent.toString());
+	    accflow.open();
+	    accflow.setWindowExtent(extent);
 
-	accflow.close();
+	    final double max_value = accflow.getMaxValue();
+	    final double cell_size_km = (accflow.getLayerCellSize() / 1000);
+	    WATERSHED_KM2 = max_value * cell_size_km * cell_size_km;
+	    System.out.println("-----------> Max value accflow: " + max_value);
+	    System.out.println("-----------> WATERSHED_km2: " + WATERSHED_KM2);
+	    System.out.println(extent.toString());
+	    watershed_km2[h] = WATERSHED_KM2;
 
+	    accflow.close();
+	}
+	network_lyr.close();
+	iter.close();
 
 	//////////////////////
 	// CALCULAR HE PARA TODOS LOS PUNTOS
@@ -806,7 +823,11 @@ GeoAlgorithm {
 
 	// Se calcula para todos los puntos
 	for (int h = 0; h < num_points; h++) {
-	    final double concentracion_max = getMaxConcentration(h * sample_dist, cmez, crio, WATERSHED_KM2, HE_VALUE);
+	    // En el mar la concentracion es maxima
+	    double concentracion_max = Double.MAX_VALUE;
+	    if (watershed_km2[h] > 0) {
+		concentracion_max = getMaxConcentration(h * sample_dist, cmez, crio, watershed_km2[h], HE_VALUE);
+	    }
 	    System.out.println("-------------------------- DILUTION IN POINT " + h);
 	    System.out.println("   concentracion_max: " + concentracion_max);
 
@@ -860,16 +881,16 @@ GeoAlgorithm {
 
 	}
 
-	final IVectorLayer result = getNewVectorLayer("IRI_network", Sextante.getText("IRI_network_result"),
+	final IVectorLayer result = getNewVectorLayer("IRI_network", "IRInet_"+ID_VERTIDO,
 		IRIAccumulatedLayer.shapetype, IRIAccumulatedLayer.fieldTypes, IRIAccumulatedLayer.fieldNames);
 
 	network_lyr.open();
-	final IFeatureIterator iter = network_lyr.iterator();
+	iter = network_lyr.iterator();
 	int ii1 = 0;
 	/////////////////////////////////
 	// 1.- Puntos en tierra
 	for (; iter.hasNext(); ii1++) {
-	    geom = iter.next().getGeometry();
+	    Geometry geom = iter.next().getGeometry();
 	    final Object[] attributes = new Object[IRIAccumulatedLayer.fieldNames.length];
 	    attributes[0] = ii1 * sample_dist;
 	    attributes[1] = iri_values[ii1][5];
@@ -890,7 +911,10 @@ GeoAlgorithm {
 	    attributes[16] = iri_f10_array[ii1];
 	    attributes[17] = iri_f11_array[ii1];
 
-	    System.out.println(ii1 + " IRI_Net: " + geom.getCoordinate().x);
+	    //Cuenca km2
+	    attributes[18] = watershed_km2[ii1];
+	    //ID_VERTIDO
+	    attributes[19] = ID_VERTIDO;
 
 	    result.addFeature(geom, attributes);
 	}
@@ -909,7 +933,7 @@ GeoAlgorithm {
 	}
 
 	for (int k = 0; k < geoms.length; ii1++, k++) {
-	    geom = geoms[k];
+	    Geometry geom = geoms[k];
 	    final Object[] attributes = new Object[IRIAccumulatedLayer.fieldNames.length];
 	    attributes[0] = ii1 * sample_dist;
 	    attributes[1] = iri_values[ii1][5];
@@ -930,7 +954,11 @@ GeoAlgorithm {
 	    attributes[16] = iri_f10_array[ii1];
 	    attributes[17] = iri_f11_array[ii1];
 
-	    System.out.println(ii1 + ": IRI_rings: " + geom.getCoordinate().x);
+	    //Cuenca km2
+	    attributes[18] = watershed_km2[ii1];
+	    //ID_VERTIDO
+	    attributes[19] = ID_VERTIDO;
+
 	    result.addFeature(geom, attributes);
 	}
 

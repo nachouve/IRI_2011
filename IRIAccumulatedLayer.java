@@ -11,7 +11,7 @@ public class IRIAccumulatedLayer {
 	"Xp",
 	// Suma de IRI_FACT e IRI_DMA
 	"IRI",
-	// estado ecol�gico del r�o en ese punto: A, B,C, D y E
+	// estado ecologico del rio en ese punto: A, B,C, D y E
 	"EST_ECO",
 	// Suma de los IRI_dma de la red de drenaje
 	"IRI_dma",
@@ -19,7 +19,7 @@ public class IRIAccumulatedLayer {
 	"IRI_fact",
 	// IRI de habitantes equivalentes para cada punto
 	"IRI_he",
-	// IRI de dilución para cada punto
+	// IRI de dilucion para cada punto
 	"IRI_dil",
 	// IRI de captaciones existentes para cada punto
 	"IRI_c_e",
@@ -27,7 +27,7 @@ public class IRIAccumulatedLayer {
 	"IRI_c_p",
 	// IRI de espacios naturales para cada punto
 	"IRI_e_n",
-	// IRI de zonas pisc�colas para cada punto
+	// IRI de zonas piscicolas para cada punto
 	"IRI_z_p",
 	// IRI de playas marinas para cada punto
 	"IRI_p_m",
@@ -41,15 +41,20 @@ public class IRIAccumulatedLayer {
 	"IRI_b",
 	// IRI de zonas de marisqueo para cada punto
 	"IRI_z_m",
-	// IRI de piscifactor�as para cada punto
-    "IRI_p"};
+	// IRI de piscifactorias para cada punto
+	"IRI_p",
+	// cuenca_km2
+	"cuenca_km2",
+	// ID del vertido (nombre),
+	"name_vert"
+    };
 
     public static Class[]  fieldTypes = new Class[] {
 	//Xp distancia del punto de la red de drenaje al punto de vertido en metros
 	Integer.class,
 	//Suma de IRI_fact e IRI_dma
 	Double.class,
-	//EST_ECO estado ecol�gico del r�o en ese punto: A, B,C, D y E
+	//EST_ECO estado ecologico del rio en ese punto: A, B,C, D y E
 	String.class,
 	//Suma de los IRI_dma de la red de drenaje
 	Double.class,
@@ -57,7 +62,7 @@ public class IRIAccumulatedLayer {
 	Double.class,
 	//IRI de habitantes equivalentes para cada punto
 	Double.class,
-	// IRI de dilución para cada punto
+	// IRI de dilucion para cada punto
 	Double.class,
 	//IRI_c_e IRI de captaciones existentes para cada punto
 	Double.class,
@@ -65,7 +70,7 @@ public class IRIAccumulatedLayer {
 	Double.class,
 	//IRI_e_n IRI de espacios naturales para cada punto
 	Double.class,
-	//IRI_z_p IRI de zonas pisc�colas para cada punto
+	//IRI_z_p IRI de zonas piscicolas para cada punto
 	Double.class,
 	//IRI_p_m IRI de playas marinas para cada punto
 	Double.class,
@@ -79,7 +84,12 @@ public class IRIAccumulatedLayer {
 	Double.class,
 	//IRI_z_m IRI de zonas de marisqueo para cada punto
 	Double.class,
-	//IRI_p IRI de piscifactor�as para cada punto
-	Double.class};
+	//IRI_p IRI de piscifactorias para cada punto
+	Double.class,
+	// cuenca_km2
+	Double.class,
+	// ID vertido
+	String.class
+    };
 
 }

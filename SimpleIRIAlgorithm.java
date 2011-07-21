@@ -64,7 +64,7 @@ import es.unex.sextante.vectorTools.linesToEquispacedPoints.LinesToEquispacedPoi
  * 
  * En la zona de costa, la metodologia cambia un poco.
  * 
- * Observaciones: - Las unidades del SIG deben ser "METROS" - ACCFLOW debe contar celdas (autom�ticamente el algoritmo obtendr� la
+ * Observaciones: - Las unidades del SIG deben ser "METROS" - ACCFLOW debe contar celdas (automaticamente el algoritmo obtendria la
  * cuenca en km2)
  * 
  * @author uve
@@ -80,6 +80,7 @@ GeoAlgorithm {
     public static final String  VERTIDO                     = "VERTIDO";
     public static final String  DEM                         = "MDT";
     public static final String  ACCFLOW                     = "ACCFLOW";
+    public static final String  ID_ATTRIB                   = "ID_ATTRIB";
     public static final String  HE_ATTRIB                   = "HE_ATTRIB";
 
     public static final String  RESULT                      = "RESULT";
@@ -128,10 +129,14 @@ GeoAlgorithm {
     private static final String DIL_WEIGHT                  = "DIL_WEIGHT";
 
 
+    //ID o nombre del Vertido
+    private String ID_VERTIDO			= "";
+
+
     //Habitantes equivalentes
     private int                 he_weight                   = 0;
 
-    //Diluci�n
+    //Dilucion
     private int                 dil_weight                  = 0;
 
     // OTHER PARAMETERS
@@ -225,8 +230,8 @@ GeoAlgorithm {
 	    m_Parameters.addInputVectorLayer(VERTIDO, Sextante.getText("Vertidos"), AdditionalInfoVectorLayer.SHAPE_TYPE_POINT, true);
 
 	    try {
+		m_Parameters.addTableField(ID_ATTRIB, "ID Vertido", VERTIDO);
 		m_Parameters.addTableField(HE_ATTRIB, "Atributo Hab. Equiv.", VERTIDO);
-		//m_Parameters.addTableField(HE_ATTRIB, "Atributo Hab. Equiv.", VERTIDOS, true);
 	    }
 	    catch (final UndefinedParentParameterNameException e) {
 		e.printStackTrace();
@@ -317,13 +322,13 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(SEARCH_FACTOR_RADIO, "Radio para buscar factores amb.", 100,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    //Par�metros para el calculo de la dilucion
-	    //Tambi�n llamado "C_mez"
+	    //Parametros para el calculo de la dilucion
+	    //Tambien llamado "C_mez"
 	    m_Parameters.addNumericalValue(MAX_DBO_after,
-		    "Concentraci�n de DBO m�xima permitida del r�o despu�s del vertido, en ppm", 6.0,
+		    "Concentracion de DBO maxima permitida del rio despues del vertido, en ppm", 6.0,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_DOUBLE);
 	    //Tambi�n llamado "C_rio"
-	    m_Parameters.addNumericalValue(DBO_before, "Concentraci�n de DBO del r�o antes del vertido, en ppm", 3.0,
+	    m_Parameters.addNumericalValue(DBO_before, "Concentracion de DBO del rio antes del vertido, en ppm", 3.0,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_DOUBLE);
 
 	    //Importancia de los dos tipos de IRI
@@ -332,7 +337,7 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(perc_FACT, "Importancia relativa de IRI_fact", 60,
 		    AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    //Pesos seg�n el estado ecologico
+	    //Pesos segun el estado ecologico
 	    m_Parameters.addNumericalValue("ecoW_E", "ecoW_E", 100, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 	    m_Parameters.addNumericalValue("ecoW_D", "ecoW_D", 64, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 	    m_Parameters.addNumericalValue("ecoW_C", "ecoW_C", 20, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
@@ -437,6 +442,11 @@ GeoAlgorithm {
 	    perc_dma = m_Parameters.getParameterValueAsInt(perc_DMA);
 	    he_weight = m_Parameters.getParameterValueAsInt(HE_WEIGHT);
 	    dil_weight = m_Parameters.getParameterValueAsInt(DIL_WEIGHT);
+
+	    vertidoLyr.open();
+	    ID_VERTIDO = (String)getFirstFeature(vertidoLyr).getRecord().getValue(m_Parameters.getParameterValueAsInt(ID_ATTRIB));
+	    ID_VERTIDO = ID_VERTIDO.replaceAll(" ", "-");
+	    vertidoLyr.close();
 
 	    sample_dist = m_Parameters.getParameterValueAsInt(SAMPLE_DIST);
 	    num_points = (MAX_IRI_DIST / sample_dist);
@@ -805,6 +815,7 @@ GeoAlgorithm {
 	System.out.println("   perc_fact: " + perc_fact);
 	System.out.println("   he: " + HE_VALUE);
 	System.out.println("   IRI_HE: " + iri_he);
+	System.out.println("   ID_VERTI: " + ID_VERTIDO);
 
 	//////////////////////
 	// CALCULAR DILUCION
@@ -830,7 +841,7 @@ GeoAlgorithm {
 	// PREPARE OUTPUTS
 	System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Network Points");
 
-	final IVectorLayer result = getNewVectorLayer("IRI_network", Sextante.getText("IRI_network_result"),
+	final IVectorLayer result = getNewVectorLayer("IRI_network", Sextante.getText("IRInet_"+ID_VERTIDO),
 		IRINetworkChannelLayer.shapetype, IRINetworkChannelLayer.fieldTypes, IRINetworkChannelLayer.fieldNames);
 
 	network_lyr.open();
@@ -894,47 +905,53 @@ GeoAlgorithm {
 
 	System.out.println("-------------------------- PREPARE OUTPUTS:  IRI Sumarize");
 
-	final IVectorLayer result2 = getNewVectorLayer("IRI_sumarize", Sextante.getText("IRI_sumarize_2010"),
+	final IVectorLayer result2 = getNewVectorLayer("IRI_sumarize", "IRIsum_"+ID_VERTIDO,
 		IRISumarizeLayer.shapetype, IRISumarizeLayer.fieldTypes, IRISumarizeLayer.fieldNames);
 
-	final double[] attributes = new double[IRISumarizeLayer.fieldNames.length];
+	final Object[] attributes = new Object[IRISumarizeLayer.fieldNames.length];
 
 	geom = firstfeature.getGeometry();
-	for (int i1 = 0; i1 < attributes.length; i1++) {
+	// los 2 ultimos son HAB_EQUIV y ID_VERTIDO
+	for (int i1 = 0; i1 < attributes.length-2; i1++) {
 	    attributes[i1] = 0.0;
 	}
 
 	for (int i1 = 0; i1 < iri_f1_array.length; i1++) {
-	    attributes[5] = attributes[5] + iri_f1_array[i1];
-	    attributes[6] = attributes[6] + iri_f2_array[i1];
-	    attributes[7] = attributes[7] + iri_f3_array[i1];
-	    attributes[8] = attributes[8] + iri_f4_array[i1];
-	    attributes[9] = attributes[9] + iri_f5_array[i1];
-	    attributes[10] = attributes[10] + iri_f6_array[i1];
-	    attributes[11] = attributes[11] + iri_f7_array[i1];
-	    attributes[12] = attributes[12] + iri_f8_array[i1];
-	    attributes[13] = attributes[13] + iri_f9_array[i1];
-	    attributes[14] = attributes[14] + iri_f10_array[i1];
-	    attributes[15] = attributes[15] + iri_f11_array[i1];
+	    attributes[5] = (Double)attributes[5] + iri_f1_array[i1];
+	    attributes[6] = (Double)attributes[6] + iri_f2_array[i1];
+	    attributes[7] = (Double)attributes[7] + iri_f3_array[i1];
+	    attributes[8] = (Double)attributes[8] + iri_f4_array[i1];
+	    attributes[9] = (Double)attributes[9] + iri_f5_array[i1];
+	    attributes[10] = (Double)attributes[10] + iri_f6_array[i1];
+	    attributes[11] = (Double)attributes[11] + iri_f7_array[i1];
+	    attributes[12] = (Double)attributes[12] + iri_f8_array[i1];
+	    attributes[13] = (Double)attributes[13] + iri_f9_array[i1];
+	    attributes[14] = (Double)attributes[14] + iri_f10_array[i1];
+	    attributes[15] = (Double)attributes[15] + iri_f11_array[i1];
 	    //IRI_DMA
-	    attributes[1] = attributes[1] + (Double) dma_status_iri_array[1][i1];
+	    attributes[1] = (Double)attributes[1] + (Double) dma_status_iri_array[1][i1];
 	}
 
-	//IRI_FACT
-	attributes[2] = sumArray(attributes, 3, 15);
 	//IRI_HE
 	attributes[3] = iri_he;
 	//IRI_DIL
 	attributes[4] = iri_dil;
+	//IRI_FACT
+	attributes[2] = sumArray(attributes, 3, 15);
 	//CUENCA
 	attributes[16] = WATERSHED_KM2;
+
 	//IRI
-	attributes[0] = attributes[1] + attributes[2];
+	attributes[0] = (Double)attributes[1] + (Double)attributes[2];
 
 	final Object[] attr = new Object[attributes.length];
-	for (int i1 = 0; i1 < attributes.length; i1++) {
-	    attr[i1] = new Double(attributes[i1]);
+	for (int i1 = 0; i1 < attributes.length-2; i1++) {
+	    attr[i1] = new Double((Double)attributes[i1]);
 	}
+	//HAB_EQUIV
+	attr[17] = HE_VALUE;
+	//ID_VERTIDO
+	attr[18] = ID_VERTIDO;
 
 	result2.addFeature(geom, attr);
 
@@ -1372,12 +1389,12 @@ GeoAlgorithm {
     }
 
 
-    private double sumArray(final double[] array,
+    private double sumArray(final Object[] array,
 	    final int ini_idx,
 	    final int end_idx) {
 	double value = 0;
 	for (int j = ini_idx; j <= end_idx; j++) {
-	    value = value + array[j];
+	    value = value + (Double)array[j];
 	}
 	return value;
     }
