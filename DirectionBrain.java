@@ -226,7 +226,7 @@ public class DirectionBrain {
 
 	double min = Double.MAX_VALUE;
 	for (int i = 0; i < z_pos.length; i++){
-	    System.out.println(z + "[" + i +"] --> " + z_pos[i]);
+	    //System.out.println(z + "[" + i +"] --> " + z_pos[i]);
 	    if (z_pos[i] < min){
 		min = z_pos[i];
 	    }
@@ -252,13 +252,13 @@ public class DirectionBrain {
 	    }
 	    if (onlyMin){
 		if (z_pos[i] <= (min + ERROR_TOLERANCE)){
-		    System.out.println(" Added_E[" + i +"]");
+		    //System.out.println(" Added_E[" + i +"]");
 		    min_cells_dir.add(i);
 		    min_cells.add(z_pos[i]);
 		}
 	    } else {
 		if (z_pos[i] <= (z + MDT_TOLERANCE)){
-		    System.out.println(" Added_T[" + i +"]");
+		    //System.out.println(" Added_T[" + i +"]");
 		    min_cells_dir.add(i);
 		    min_cells.add(z_pos[i]);
 		}
@@ -281,30 +281,30 @@ public class DirectionBrain {
 	// If lastDirection can be... go ahead!
 	int lastDirection = getLastDirection();
 	if (onlyMin && min_cells_dir.contains(lastDirection)){
-	    System.out.println(" Using last [" + lastDirection +"]");
+	    //System.out.println(" Using last [" + lastDirection +"]");
 	    return lastDirection;
 	}
 
 	// If most used Direction of the last 3 can be... go ahead!
 	int last3Direction = getLastDirection(3);
 	if (onlyMin && min_cells_dir.contains(last3Direction)){
-	    System.out.println(" Using 3 Brains [" + last3Direction +"]");
+	    //System.out.println(" Using 3 Brains [" + last3Direction +"]");
 	    return last3Direction;
 	}
 
 	// If most used Direction of the last X can be... go ahead!
 	int lastXDirection = getLastDirection(SIZE);
 	if (onlyMin && min_cells_dir.contains(lastXDirection)){
-	    System.out.println(" Using 10 Brains [" + lastXDirection +"]");
+	    //System.out.println(" Using 10 Brains [" + lastXDirection +"]");
 	    return lastXDirection;
 	}
 
 	if (min_cells_dir.size()>0){
-	    System.out.println(" Using first on the array [" + min_cells_dir.get(0) +"]");
+	    //System.out.println(" Using first on the array [" + min_cells_dir.get(0) +"]");
 	    return getMinZdir(min_cells_dir, z_pos);
 	} else {
 	    if (onlyMin){
-		System.out.println(" CALL WITH MORE TOLERANCE]");
+		//System.out.println(" CALL WITH MORE TOLERANCE]");
 		return getLogicalDirection(z, z_pos, false);
 	    }
 	    return -1;
