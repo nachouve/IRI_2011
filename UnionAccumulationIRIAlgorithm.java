@@ -48,7 +48,6 @@ import es.unex.sextante.gui.settings.SextanteModelerSettings;
 import es.unex.sextante.outputs.Output;
 import es.unex.sextante.outputs.OutputVectorLayer;
 import es.unex.sextante.parameters.Parameter;
-import es.unex.sextante.vectorTools.snapPoints.SnapPointsAlgorithm;
 
 
 /**
@@ -80,7 +79,7 @@ GeoAlgorithm {
 
 	setName("Union Accumulation IRI");
 	setGroup("AA_IRI Algorithms");
-	setUserCanDefineAnalysisExtent(true);
+	setUserCanDefineAnalysisExtent(false);
 
 	try {
 	    m_Parameters.addMultipleInput(ACC_IRI_LYRs, "Accumulation IRI Layers",
@@ -155,7 +154,6 @@ GeoAlgorithm {
 		} catch (IteratorException e) {
 		    e.printStackTrace();
 		}
-
 	    }
 	    iri_lyrs[i].close();
 	}
@@ -171,7 +169,12 @@ GeoAlgorithm {
 	for (int i = 0; i < iri_lyrs.length; i++) {
 	    IVectorLayer acc_iri = iri_lyrs[i];
 	    acc_iri.open();
-	    System.out.println(acc_iri.getName() + " -- Num.Feats: " + acc_iri.getShapesCount());
+	    int num_feats = acc_iri.getShapesCount();
+	    System.out.println(acc_iri.getName() + " -- Num.Feats: " + num_feats);
+	    if (num_feats == 0){
+		System.out.println(">>>>>>>>>>> ERROR: " + acc_iri.getName() + " -- Num.Feats: " + num_feats);
+		continue;
+	    }
 	    extent2D = acc_iri.getFullExtent();
 
 	    if (full_extent2D == null){
@@ -179,19 +182,24 @@ GeoAlgorithm {
 	    } else {
 		full_extent2D = extent2D.createUnion(full_extent2D);
 	    }
+	    System.out.println("EXTENSION: " + full_extent2D.getHeight() +"  "+full_extent2D.getWidth() + ": " + full_extent2D.getMinX());
 	    acc_iri.close();
 	}
 
+
 	AnalysisExtent ext = getEnlargedExtend(full_extent2D, cell_size);
+
+	System.out.println("EXTENSION2: " + ext.getHeight() +"  "+ext.getWidth());
 	ext.enlargeOneCell();
 	ext.enlargeOneCell();
+	System.out.println("EXTENSION2: " + ext.getHeight() +"  "+ext.getWidth());
 
 	//System.out.println("------ ANTES DEL SNAP");
 	//printAllLayers();
 
 	//////////////////////////////////////
 	///// Snap all points
-	for (int i = 1; i < iri_lyrs.length; i++){
+	/*	for (int i = 1; i < iri_lyrs.length; i++){
 	    for (int j = 0; j < i; j++){
 		IVectorLayer result = null;
 		final SnapPointsAlgorithm alg = new SnapPointsAlgorithm();
@@ -230,10 +238,11 @@ GeoAlgorithm {
 		}
 	    }
 	}
-
+	 */
 	//System.out.println("------ Despues del Snap");
 	//printAllLayers();
 
+	System.out.println(ext.getHeight() +"  "+ext.getWidth());
 
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
 	GeoAlgorithm geomodel = ModelAlgorithmIO.loadModelAsAlgorithm(modelsFolder + "/" +"create_graticule.model");
@@ -304,20 +313,25 @@ GeoAlgorithm {
 	fieldNames[2] = "IRI_dma";
 	fieldTypes[2] = Double.class;
 
-	char c_ascii = 'A';
+	char c_ascii1 = 'A';
+	char c_ascii2 = 'A';
 	for (int i = num_first_cols, j = 0; j < iri_lyrs.length; j++){
-	    fieldNames[i] = String.valueOf(c_ascii)+"_vertido";
+	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_vertido";
 	    fieldTypes[i++] = String.class;
-	    fieldNames[i] = String.valueOf(c_ascii)+"_xp";
+	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_xp";
 	    fieldTypes[i++] = Integer.class;
-	    fieldNames[i] = String.valueOf(c_ascii)+"_IRI";
+	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_IRI";
 	    fieldTypes[i++] = Double.class;
-	    fieldNames[i] = String.valueOf(c_ascii)+"_IRI_fact";
+	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_IRI_fact";
 	    fieldTypes[i++] = Double.class;
-	    fieldNames[i] = String.valueOf(c_ascii)+"_IRI_dma";
+	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_IRI_dma";
 	    fieldTypes[i++] = Double.class;
 
-	    c_ascii++;
+	    c_ascii2++;
+	    if ('Z'<(c_ascii2)){
+		c_ascii1++;
+		c_ascii2 = 'A';
+	    }
 	}
 
 	//	IVectorLayer aux = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
@@ -326,7 +340,8 @@ GeoAlgorithm {
 	System.out.println("==============  START DETECTING IRI ACCUMUTATION POINTS ON THE GRID =========");
 
 	HashMap<Integer, Object[]> cell_map = new HashMap<Integer, Object[]>();
-	for (int i = 0; i < iri_lyrs.length; i++) {
+	setProgressText("Union of accIRI");
+	for (int i = 0; i < iri_lyrs.length && setProgress(i, iri_lyrs.length); i++) {
 	    IVectorLayer acc_iri = iri_lyrs[i];
 
 	    System.out.println(" ---- "+ acc_iri.getName() +" ----");
