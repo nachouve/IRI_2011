@@ -73,6 +73,10 @@ GeoAlgorithm {
     public String iri_column_name = "";
 
     private int num_first_cols;
+    private int num_columns;
+
+    private String[] fieldNames;
+    private Class[]  fieldTypes;
 
     @Override
     public void defineCharacteristics() {
@@ -300,37 +304,50 @@ GeoAlgorithm {
 
 	//IVectorLayer.SHAPE_TYPE_POLYGON;
 	//GENERATE FIELD/COLUMN ON THE RESULT
-	num_first_cols = 3;
 
-	int num_columns = (iri_lyrs.length * 5) + num_first_cols;
-	String[] fieldNames = new String[num_columns];
-	Class[]  fieldTypes = new Class[num_columns];
+	num_first_cols = IRIAccumulatedLayer.fieldNames.length-4;
 
-	fieldNames[0] = "IRI";
-	fieldTypes[0] = Double.class;
-	fieldNames[1] = "IRI_fact";
-	fieldTypes[1] = Double.class;
-	fieldNames[2] = "IRI_dma";
-	fieldTypes[2] = Double.class;
+	num_columns = (iri_lyrs.length * (num_first_cols+2)) + num_first_cols;
+	fieldNames = new String[num_columns];
+	fieldTypes = new Class[num_columns];
+
+	int num = 0;
+	for (int i = 0; i < IRIAccumulatedLayer.fieldNames.length; i++){
+	    String name = IRIAccumulatedLayer.fieldNames[i];
+	    Class type = IRIAccumulatedLayer.fieldTypes[i];
+	    if (isResultField(name) && !name.equalsIgnoreCase("name_vert") && !name.equalsIgnoreCase("Xp")) {
+		fieldNames[num] = name;
+		fieldTypes[num] = type;
+		num++;
+	    }
+	}
+	num_first_cols = num;
 
 	char c_ascii1 = 'A';
 	char c_ascii2 = 'A';
+	char c_ascii3 = 'A';
 	for (int i = num_first_cols, j = 0; j < iri_lyrs.length; j++){
-	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_vertido";
-	    fieldTypes[i++] = String.class;
-	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_xp";
-	    fieldTypes[i++] = Integer.class;
-	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_IRI";
-	    fieldTypes[i++] = Double.class;
-	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_IRI_fact";
-	    fieldTypes[i++] = Double.class;
-	    fieldNames[i] = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+"_IRI_dma";
-	    fieldTypes[i++] = Double.class;
+	    //String CODE = String.valueOf(c_ascii1)+String.valueOf(c_ascii2)+String.valueOf(c_ascii3);
+	    String CODE = String.valueOf(c_ascii2)+String.valueOf(c_ascii3);
+	    for (int k = 0; k < IRIAccumulatedLayer.fieldNames.length; k++){
+		String name = IRIAccumulatedLayer.fieldNames[k];
+		Class type = IRIAccumulatedLayer.fieldTypes[k];
+		if (isResultField(name)) {
+		    //name = name.replace("IRI_", "IRI");
+		    fieldNames[num] = CODE+"_"+name;
+		    fieldTypes[num] = type;
+		    num++;
+		}
+	    }
 
-	    c_ascii2++;
-	    if ('Z'<(c_ascii2)){
-		c_ascii1++;
-		c_ascii2 = 'A';
+	    c_ascii3++;
+	    if ('Z'<(c_ascii3)){
+		c_ascii2++;
+		c_ascii3 = 'A';
+		if ('Z'<(c_ascii2)){
+		    c_ascii1++;
+		    c_ascii2 = 'A';
+		}
 	    }
 	}
 
@@ -385,6 +402,24 @@ GeoAlgorithm {
 		Geometry geom = cell.getGeometry();
 		Object[] values = cell_map.get(i);
 		values = sumarizeIRI(values);
+		for (int j = 0; j < values.length; j++){
+		    System.out.println(j + ": " + fieldTypes[j] + "  "+ fieldNames[j] + "\t" + values[j]);
+		    try {
+			if (fieldTypes[j].getClass().equals(Double.class)) {
+			    double f = (Double)values[j];
+			}
+			if (fieldTypes[j].getClass().equals(String.class)) {
+			    String f = (String)values[j];
+			}
+			if (fieldTypes[j].getClass().equals(Integer.class)) {
+			    int f = (Integer)values[j];
+			}
+		    } catch (Exception e) {
+			System.out.println("ERROR!!!!!!!!!!");
+		    }
+
+
+		}
 		result.addFeature(geom, values);
 		cell_map.remove(i);
 	    } else {
@@ -398,23 +433,32 @@ GeoAlgorithm {
 	return !m_Task.isCanceled();
     }
 
-    private Object[] sumarizeIRI(Object[] values) {
-	// i = i + 2... because Xp y IRI_Layer_Name columns
-	for (int i = num_first_cols + 2; i < values.length; i = i + 3){
+    private boolean isResultField(String name) {
+	// TODO Auto-generated method stub
+	if (name.equalsIgnoreCase("EST_ECO")){
+	    return false;
+	}
+	if (name.equalsIgnoreCase("cuenca_km2")){
+	    return false;
+	}
+	return true;
+    }
 
-	    if ((Double)values[i] != -1){
-		// IRI
-		values[0] = (Double)values[0] + (Double)values[i];
-	    }
-	    i++;
-	    if ((Double)values[i] != -1){
-		// IRI_fact
-		values[1] = (Double)values[1] + (Double)values[i];
-	    }
-	    i++;
-	    if ((Double)values[i] != -1){
-		// IRI_dma
-		values[2] = (Double)values[2] + (Double)values[i];
+
+    private Object[] sumarizeIRI(Object[] values) {
+
+	for (int i = 0; i < iri_lyrs.length; i++){
+	    // +1: because "Xp" column
+	    int j = num_first_cols + (i * (num_first_cols + 2)) + 1;
+	    // -1: Not until the end because "name_vert" column
+	    int stop_num = j + num_first_cols - 1;
+	    int num = 0;
+	    for (;j< stop_num; j++,num++) {
+		System.out.println(j + ": " + values[j]);
+		System.out.println(j + " type: " + fieldTypes[j]);
+		if ((Double)values[j] != -1){
+		    values[num] = (Double)values[num] + (Double)values[j];
+		}
 	    }
 	}
 	return values;
@@ -427,30 +471,40 @@ GeoAlgorithm {
 	if (cellMap.containsKey(cellNum)){
 	    values = cellMap.get(cellNum);
 	} else {
-	    values = new Object[num_first_cols+(num_lyrs*5)];
-	    for (int i = 0; i < num_first_cols;){
+	    values = new Object[num_columns];
+	    int i = 0;
+	    for (; i < num_first_cols;){
 		values[i++] = 0.0;
 	    }
 
-	    //starts on 2 for IRI, and "A_vertido" column
-	    for (int i = num_first_cols; i < values.length;){
-		values[i++] = "-1";
-		values[i++] = -1.0;
-		values[i++] = -1.0;
-		values[i++] = -1.0;
-		values[i++] = -1.0;
-		//one more because N_vertido column
+	    if (i > 15) {
+		i = i;
+	    }
+
+	    for (; i < values.length;i++){
+		if (fieldTypes[i] == Double.class) {
+		    values[i] = -1.0;
+		} else if (fieldTypes[i] == Integer.class) {
+		    values[i] = -1;
+		} else if (fieldTypes[i] == String.class) {
+		    values[i] = "--";
+		}
 	    }
 	}
-	int i = num_first_cols + (lyrIdx * 5);
-	if (((String)values[i]).equalsIgnoreCase(name_lyr)){
-	    System.out.println("2 OH OH Parece que hay 2 puntos en la misma celda     2222222222222222222222222222222222");
+	int i = num_first_cols + (lyrIdx * (num_first_cols + 2));
+	int name_idx = num_first_cols + ((lyrIdx + 1) * (num_first_cols + 2)) - 1;
+	//System.out.println(i + " Xp??: " + values[i]);
+	//System.out.println(name_idx + " NAME_LAYER?: " + values[name_idx]);
+	if (((String)values[name_idx]).equalsIgnoreCase(name_lyr)){
+	    System.out.println("OH OH Parece que hay 2 puntos en la misma celda --- 2222222222222222222222222222222222");
 	}
-	values[i++] = name_lyr;
-	values[i++] = getValue("Xp", accLayer, iriFeat);
-	values[i++] = getValue("IRI", accLayer, iriFeat);
-	values[i++] = getValue("IRI_fact", accLayer, iriFeat);
-	values[i++] = getValue("IRI_dma", accLayer, iriFeat);
+
+	int stop_num = i + num_first_cols + 2;
+	for (; i < stop_num; i++){
+	    String col_name = fieldNames[i].substring(3);
+	    values[i] = getValue(col_name, accLayer, iriFeat);
+	    System.out.println(i + ": "+ col_name + "  --  " + values[i]);
+	}
 
 	cellMap.put(cellNum, values);
     }
@@ -460,7 +514,7 @@ GeoAlgorithm {
 	IRecord record = iriFeat.getRecord();
 	int idx = accLayer.getFieldIndexByName(field_name);
 	if (idx == -1){
-	    System.out.println(field_name + "does not exists!!!!");
+	    System.out.println(field_name + " does not exists!!!!");
 	    return null;
 	}
 	return record.getValue(idx);
