@@ -45,7 +45,7 @@ GeoAlgorithm {
     @Override
     public void defineCharacteristics() {
 
-	setName(Sextante.getText("Sample_with_graticule"));
+	setName(Sextante.getText("Snap Points To Ordered Grid"));
 	setGroup(Sextante.getText("AA_IRI Algorithms"));
 	setUserCanDefineAnalysisExtent(true);
 
