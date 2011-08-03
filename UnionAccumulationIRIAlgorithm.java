@@ -443,18 +443,14 @@ GeoAlgorithm {
 	    }
 	}
 	int i = num_first_cols + (lyrIdx * 5);
-	if (values[i] != null){
-	    System.out.println("22222222222222222222222222222222222     OH OH Parece que hay 2 puntos en la misma celda     2222222222222222222222222222222222");
+	if (((String)values[i]).equalsIgnoreCase(name_lyr)){
+	    System.out.println("2 OH OH Parece que hay 2 puntos en la misma celda     2222222222222222222222222222222222");
 	}
 	values[i++] = name_lyr;
 	values[i++] = getValue("Xp", accLayer, iriFeat);
 	values[i++] = getValue("IRI", accLayer, iriFeat);
 	values[i++] = getValue("IRI_fact", accLayer, iriFeat);
 	values[i++] = getValue("IRI_dma", accLayer, iriFeat);
-
-	//	for (int j = 0; j < values.length; j++){
-	//	    System.out.println(j + ": "+values[j]);
-	//	}
 
 	cellMap.put(cellNum, values);
     }
