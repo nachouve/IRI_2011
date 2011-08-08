@@ -477,9 +477,6 @@ GeoAlgorithm {
 		values[i++] = 0.0;
 	    }
 
-	    if (i > 15) {
-		i = i;
-	    }
 
 	    for (; i < values.length;i++){
 		if (fieldTypes[i] == Double.class) {
