@@ -1017,11 +1017,12 @@ GeoAlgorithm {
 		extent.addExtent(networkRing_lyr.getFullExtent());
 	    }
 
+	    factLyr.removeFilters();
 	    factLyr.addFilter(new BoundingBoxFilter(extent));
 
-	    final IFeatureIterator iter1 = factLyr.iterator();
-	    for (int j = 0; iter1.hasNext(); j++) {
-		final IFeature feat1 = iter1.next();
+	    final IFeatureIterator factIter = factLyr.iterator();
+	    for (int j = 0; factIter.hasNext(); j++) {
+		final IFeature feat1 = factIter.next();
 		final Geometry geom1 = feat1.getGeometry();
 		System.out.println("Feat FA: " + j);
 
@@ -1103,7 +1104,7 @@ GeoAlgorithm {
 			System.out.println("FACTOR not found");
 		    }
 		}
-		iter1.close();
+		factIter.close();
 		iter2.close();
 		if (iter3 != null) {
 		    iter3.close();
@@ -1165,6 +1166,7 @@ GeoAlgorithm {
 		extent.addExtent(networkRing_lyr.getFullExtent());
 	    }
 
+	    dmaLyr.removeFilters();
 	    dmaLyr.addFilter(new BoundingBoxFilter(extent));
 
 	    final IFeatureIterator iter1 = dmaLyr.iterator();
