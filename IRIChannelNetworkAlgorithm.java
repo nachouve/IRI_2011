@@ -214,14 +214,14 @@ GeoAlgorithm {
 	    i++;
 	    m_Network.setCellValue(x, y, -1);
 
-	    System.out.println("[" + i+ "] From (" + x + "," + y +") : " + m_DEM.getCellValueAsFloat(x, y));
+	    //System.out.println("[" + i+ "] From (" + x + "," + y +") : " + m_DEM.getCellValueAsFloat(x, y));
 	    //iDirection = getDirToNextLowestCell(m_DEM, x, y, true, iDirection);
 	    iDirection = getDirToNextLowestCell2(m_DEM, x, y, true);
 	    if (iDirection >= 0) {
 		x = x + m_iOffsetX[iDirection];
 		y = y + m_iOffsetY[iDirection];
 		brain.addDirection(iDirection);
-		System.out.println("To (" + x + ", " + y +") --> " + m_DEM.getCellValueAsFloat(x, y));
+		//System.out.println("To (" + x + ", " + y +") --> " + m_DEM.getCellValueAsFloat(x, y));
 		Point2D pt = extent.getWorldCoordsFromGridCoords(x, y);
 		Coordinate c = new Coordinate(pt.getX(), pt.getY());
 		river_points.add(c);
@@ -390,7 +390,7 @@ GeoAlgorithm {
 
 	}
 
-	System.out.println("GO TO ------------> " + dir);
+	//System.out.println("GO TO ------------> " + dir);
 	Coordinate c = new Coordinate(x + m_iOffsetX[dir], y + m_iOffsetY[dir]);
 	if (river_cells.contains(c)){
 	    System.out.println(" OH OH OH... esta ya estaba. ("+ (x + m_iOffsetX[dir])+","+(y + m_iOffsetY[dir])+")");
