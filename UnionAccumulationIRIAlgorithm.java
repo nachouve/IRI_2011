@@ -37,7 +37,6 @@ import es.unex.sextante.dataObjects.IRecord;
 import es.unex.sextante.dataObjects.IVectorLayer;
 import es.unex.sextante.exceptions.GeoAlgorithmExecutionException;
 import es.unex.sextante.exceptions.IteratorException;
-import es.unex.sextante.exceptions.NullParameterAdditionalInfoException;
 import es.unex.sextante.exceptions.NullParameterValueException;
 import es.unex.sextante.exceptions.RepeatedParameterNameException;
 import es.unex.sextante.exceptions.WrongParameterIDException;
@@ -52,9 +51,14 @@ import es.unex.sextante.parameters.Parameter;
 
 /**
  * Algoritmo para procesar todas las capas resultado de AcumulationIRI
- * Se genera una malla de polígonos con los resultados
+ * Se genera una malla de poligonos con los resultados. En esta malla se recalcula
+ *    la dilucion dado que no es una operacion lineal, es decir, se suma los habitantes
+ *    equivalentes totales en ese punto (recordar que ese numero HAB_EQU va descendiendo y se refleja en IRI_HE)
+ *    y se calcula el cuenca_km2 y el IRI_DIL total.
  * 
- * Observaciones: - Las unidades del SIG deben ser "METROS" - ACCFLOW debe contar celdas (automï¿½ticamente el algoritmo obtendrï¿½ la
+ * 
+ * 
+ * Observaciones: - Las unidades del SIG deben ser "METROS" - ACCFLOW debe contar celdas (automaticamente el algoritmo obtendria la
  * cuenca en km2)
  * 
  * @author uve, jorgelf
@@ -66,11 +70,14 @@ GeoAlgorithm {
 
     public static final String ACC_IRI_LYRs = "ACC_IRI_LYRs";
     public static final String CELL_SIZE = "CELL_SIZE";
-    public static final String IRI_TYPE = "IRI_TYPE";
+    public static final String WEIGTH_HE = "WEIGTH_HE";
+    public static final String WEIGTH_DIL = "WEIGTH_DIL";
 
     public IVectorLayer[] iri_lyrs = null;
     public int cell_size = 50;
-    public String iri_column_name = "";
+
+    private int he_weight;
+    private int dil_weight;
 
     private int num_first_cols;
     private int num_columns;
@@ -89,10 +96,10 @@ GeoAlgorithm {
 	    m_Parameters.addMultipleInput(ACC_IRI_LYRs, "Accumulation IRI Layers",
 		    AdditionalInfoMultipleInput.DATA_TYPE_VECTOR_POINT, true);
 
-	    m_Parameters.addNumericalValue(CELL_SIZE, "Tamaño celda", 50, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
+	    m_Parameters.addNumericalValue(CELL_SIZE, "Tamaño celda", 83, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
-	    String[] sValues = {"IRI", "IRI_DMA", "IRI_FACT"};
-	    m_Parameters.addSelection(IRI_TYPE, "Tipo de IRI a calcular", sValues );
+	    m_Parameters.addNumericalValue(WEIGTH_HE, "PESO_HE", 25, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
+	    m_Parameters.addNumericalValue(WEIGTH_DIL, "PESO_DIL", 10, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
 	    addOutputVectorLayer("GRID_UNION", "GRID_UNION", OutputVectorLayer.SHAPE_TYPE_POLYGON);
 	    addOutputVectorLayer("RESULT_ACC_IRI", "RESULT_ACC_IRI", OutputVectorLayer.SHAPE_TYPE_POLYGON);
@@ -121,7 +128,9 @@ GeoAlgorithm {
 	    }
 
 	    cell_size = m_Parameters.getParameterValueAsInt(CELL_SIZE);
-	    iri_column_name = m_Parameters.getParameterValueAsString(IRI_TYPE);
+	    he_weight = m_Parameters.getParameterValueAsInt(WEIGTH_HE);
+	    dil_weight = m_Parameters.getParameterValueAsInt(WEIGTH_DIL);
+
 
 	} catch (WrongParameterTypeException e) {
 	    // TODO Auto-generated catch block
@@ -130,9 +139,6 @@ GeoAlgorithm {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	} catch (NullParameterValueException e) {
-	    // TODO Auto-generated catch block
-	    e.printStackTrace();
-	} catch (NullParameterAdditionalInfoException e) {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
@@ -305,7 +311,7 @@ GeoAlgorithm {
 	//IVectorLayer.SHAPE_TYPE_POLYGON;
 	//GENERATE FIELD/COLUMN ON THE RESULT
 
-	num_first_cols = IRIAccumulatedLayer.fieldNames.length-4;
+	num_first_cols = IRIAccumulatedLayer.fieldNames.length-3;
 
 	num_columns = (iri_lyrs.length * (num_first_cols+2)) + num_first_cols;
 	fieldNames = new String[num_columns];
@@ -417,8 +423,6 @@ GeoAlgorithm {
 		    } catch (Exception e) {
 			System.out.println("ERROR!!!!!!!!!!");
 		    }
-
-
 		}
 		result.addFeature(geom, values);
 		cell_map.remove(i);
@@ -434,31 +438,64 @@ GeoAlgorithm {
     }
 
     private boolean isResultField(String name) {
-	// TODO Auto-generated method stub
+
 	if (name.equalsIgnoreCase("EST_ECO")){
 	    return false;
 	}
-	if (name.equalsIgnoreCase("cuenca_km2")){
-	    return false;
-	}
+	//	if (name.equalsIgnoreCase("cuenca_km2")){
+	//	    return false;
+	//	}
 	return true;
     }
 
 
     private Object[] sumarizeIRI(Object[] values) {
 
+	double max_watershed = Double.MIN_VALUE;
+
 	for (int i = 0; i < iri_lyrs.length; i++){
 	    // +1: because "Xp" column
 	    int j = num_first_cols + (i * (num_first_cols + 2)) + 1;
 	    // -1: Not until the end because "name_vert" column
-	    int stop_num = j + num_first_cols - 1;
+	    int stop_num = j + num_first_cols;
 	    int num = 0;
+
 	    for (;j< stop_num; j++,num++) {
-		System.out.println(j + ": " + values[j]);
-		System.out.println(j + " type: " + fieldTypes[j]);
+		//System.out.println(j + ": " + values[j]);
+		//System.out.printlA 2 pen(j + " type: " + fieldTypes[j]);
 		if ((Double)values[j] != -1){
 		    values[num] = (Double)values[num] + (Double)values[j];
+		    //Get max cuenca to recalculate IRI_DIL
+		    if (fieldNames[j].contains("cuenca")){
+			System.out.println(fieldNames[j]+ "["+j+"]: " + values[j]);
+			double cuenca = (Double)values[j];
+			if (cuenca > max_watershed){
+			    max_watershed = cuenca;
+			}
+		    }
 		}
+	    }
+	    values[--num] = max_watershed;
+
+	    // RECALCULATE IRI_DIL
+	    double iri_dil;
+	    if (fieldNames[3].equalsIgnoreCase("IRI_HE")){
+
+		final double perc_fact = 60;
+		double iri_he = (Double)values[3];
+		double he = (100000 * iri_he)/(he_weight * 60);
+		if (fieldNames[4].equalsIgnoreCase("IRI_DIL")){
+		    double concentracion_max = getMaxConcentration(max_watershed, he);
+		    if (concentracion_max >= 300) {
+			values[4] = 0.0;
+		    } else {
+			values[4] = (dil_weight * perc_fact / 100) * (1 - (concentracion_max / 300));
+		    }
+		} else {
+		    System.out.println("\n\nERROR!!!!: NO DETECTA 'IRI_DIL' en la columna esperada!!!!! \n\n");
+		}
+	    } else {
+		System.out.println("\n\nERROR!!!!: NO DETECTA 'IRI_HE' en la columna esperada!!!!! \n\n");
 	    }
 	}
 	return values;
@@ -541,5 +578,17 @@ GeoAlgorithm {
 	v = div * p;
 	return v;
     }
+
+    private double getMaxConcentration(final double watershed_km2,
+	    final double he) {
+
+	final double conc_mez = 6;
+	final double conc_rio = 3;
+
+	final double _7Q10 = (3.1 * Math.pow(watershed_km2, 0.8736));
+	final double cmax = conc_mez + (432 * ((_7Q10 * (conc_mez - conc_rio)) / he));
+	return cmax;
+    }
+
 
 }
