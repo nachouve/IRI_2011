@@ -53,7 +53,6 @@ GeoAlgorithm {
 	    m_Parameters.addInputVectorLayer(POINTS, "Network_Points",
 		    AdditionalInfoVectorLayer.SHAPE_TYPE_POINT, true);
 	    m_Parameters.addInputRasterLayer(GRID, "River_grid", true);
-	    m_Parameters.addBoolean(INTERPOLATE, Sextante.getText("Use_interpolation"), false);
 
 	    addOutputVectorLayer(RESULT, Sextante.getText("Snaped_net"), OutputVectorLayer.SHAPE_TYPE_POLYGON);
 	}
@@ -73,12 +72,10 @@ GeoAlgorithm {
 	int iLayer;
 	int iShapeCount;
 
-	boolean bInterpolate;
 	IRasterLayer grid;
 
 	m_Layer = m_Parameters.getParameterValueAsVectorLayer(POINTS);
 	m_Grid = m_Parameters.getParameterValueAsRasterLayer(GRID);
-	bInterpolate = m_Parameters.getParameterValueAsBoolean(INTERPOLATE);
 	//m_Layer.addFilter(new BoundingBoxFilter(m_AnalysisExtent));
 
 	m_Layer.open();

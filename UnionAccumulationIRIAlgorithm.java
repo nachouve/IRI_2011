@@ -433,7 +433,6 @@ GeoAlgorithm {
 	//graticule.close();
 	g_iter.close();
 
-
 	return !m_Task.isCanceled();
     }
 
