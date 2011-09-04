@@ -19,9 +19,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 package es.udc.sextante.gridAnalysis.IRI;
 
 import java.awt.geom.Rectangle2D;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 import es.unex.sextante.additionalInfo.AdditionalInfoMultipleInput;
@@ -85,6 +89,8 @@ GeoAlgorithm {
     private String[] fieldNames;
     private Class[]  fieldTypes;
 
+    BufferedWriter outCSV = null;
+
     @Override
     public void defineCharacteristics() {
 
@@ -102,6 +108,7 @@ GeoAlgorithm {
 	    m_Parameters.addNumericalValue(WEIGTH_DIL, "PESO_DIL", 10, AdditionalInfoNumericalValue.NUMERICAL_VALUE_INTEGER);
 
 	    addOutputVectorLayer("GRID_UNION", "GRID_UNION", OutputVectorLayer.SHAPE_TYPE_POLYGON);
+	    addOutputVectorLayer("AUX_RESULT_ACC_IRI", "AUX_RESULT_ACC_IRI", OutputVectorLayer.SHAPE_TYPE_POLYGON);
 	    addOutputVectorLayer("RESULT_ACC_IRI", "RESULT_ACC_IRI", OutputVectorLayer.SHAPE_TYPE_POLYGON);
 
 	} catch (RepeatedParameterNameException e) {
@@ -207,51 +214,6 @@ GeoAlgorithm {
 	//System.out.println("------ ANTES DEL SNAP");
 	//printAllLayers();
 
-	//////////////////////////////////////
-	///// Snap all points
-	/*	for (int i = 1; i < iri_lyrs.length; i++){
-	    for (int j = 0; j < i; j++){
-		IVectorLayer result = null;
-		final SnapPointsAlgorithm alg = new SnapPointsAlgorithm();
-		ParametersSet params = alg.getParameters();
-		String name_lyr = iri_lyrs[i].getName();
-		String name_lyr2 = iri_lyrs[j].getName();
-		params.getParameter(SnapPointsAlgorithm.LAYER).setParameterValue(iri_lyrs[i]);
-		params.getParameter(SnapPointsAlgorithm.SNAPTO).setParameterValue(iri_lyrs[j]);
-		params.getParameter(SnapPointsAlgorithm.TOLERANCE).setParameterValue(cell_size);
-
-		OutputObjectsSet oo = alg.getOutputObjects();
-		alg.setAnalysisExtent(ext);
-
-		System.out.println("------ SNAP " + i + " to " + j + "  " + name_lyr +" -> " + name_lyr2);
-
-		boolean bSucess = alg.execute(m_Task, m_OutputFactory);
-
-		if (bSucess) {
-		    result = (IVectorLayer) oo.getOutput(SnapPointsAlgorithm.RESULT).getOutputObject();
-		    result.setName(name_lyr);
-
-		    result.open();
-		    System.out.println(name_lyr + ": " + result.getShapesCount());
-
-		    try {
-			result.postProcess();
-		    } catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		    }
-		    result.close();
-		    iri_lyrs[i] = result;
-
-		} else {
-		    return false;
-		}
-	    }
-	}
-	 */
-	//System.out.println("------ Despues del Snap");
-	//printAllLayers();
-
 	System.out.println(ext.getHeight() +"  "+ext.getWidth());
 
 	final String modelsFolder = SextanteGUI.getSettingParameterValue(SextanteModelerSettings.MODELS_FOLDER);
@@ -281,11 +243,11 @@ GeoAlgorithm {
 	    OutputObjectsSet outputs = geomodel.getOutputObjects();
 	    for (int j = 0; j < outputs.getOutputLayersCount(); j++) {
 		Output o = outputs.getOutput(j);
-		System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
+		//System.out.println(j + " output name: " + o.getDescription() + "  " + o.getName() + " " + o.getTypeDescription()) ;
 		if (o.getDescription().equalsIgnoreCase("graticule")){
 		    graticule = (IVectorLayer) o.getOutputObject();
 		    graticule.open();
-		    System.out.println("graticule.feats: " +  graticule.getShapesCount());
+		    //System.out.println("graticule.feats: " +  graticule.getShapesCount());
 		    graticule.close();
 
 		    IFeatureIterator it = graticule.iterator();
@@ -392,24 +354,71 @@ GeoAlgorithm {
 	    }
 	    iter.close();
 	    System.out.println("NUMBER OF CELLS WITH DATA: " +cell_map.size());
-
 	}
+
+
+	//////////////////////////////// AUX VECTOR LAYER BEFORE SUMARIZE
+
+	final IVectorLayer aux_result = getNewVectorLayer("AUX_RESULT_ACC_IRI", Sextante.getText("AUX_RESULT_ACC_IRI"),
+		AdditionalInfoMultipleInput.DATA_TYPE_VECTOR_POLYGON, fieldTypes, fieldNames);
+
+	openCSV(fieldNames, "/tmp/aux_outCSV.csv");
+
+	HashMap aux_cell_map = (HashMap) cell_map.clone();
+	IFeatureIterator g_iter = graticule.iterator();
+	for (int i = 0; g_iter.hasNext(); i++){
+	    //System.out.println(i +"/" +graticule.getShapesCount());
+	    if (aux_cell_map.containsKey(i)){
+		//System.out.println("Contains: " + i +"/" +graticule.getShapesCount());
+		IFeature cell = g_iter.next();
+		Geometry geom = cell.getGeometry();
+		Object[] values = (Object[]) aux_cell_map.get(i);
+		//values = sumarizeIRI(values);
+		for (int j = 0; j < values.length; j++){
+		    //System.out.println(j + ": " + fieldTypes[j] + "  "+ fieldNames[j] + "\t" + values[j]);
+		    try {
+			if (fieldTypes[j].getClass().equals(Double.class)) {
+			    double f = (Double)values[j];
+			}
+			if (fieldTypes[j].getClass().equals(String.class)) {
+			    String f = (String)values[j];
+			}
+			if (fieldTypes[j].getClass().equals(Integer.class)) {
+			    int f = (Integer)values[j];
+			}
+		    } catch (Exception e) {
+			System.out.println("ERROR!!!!!!!!!!");
+		    }
+		}
+		aux_result.addFeature(geom, values);
+		writeCSV(geom, values);
+		aux_cell_map.remove(i);
+	    } else {
+		g_iter.next();
+	    }
+	}
+	//graticule.close();
+	g_iter.close();
+	closeCSV();
+	////////////////////////////// END AUX_VECTOR
+
 
 	final IVectorLayer result = getNewVectorLayer("RESULT_ACC_IRI", Sextante.getText("RESULT_ACC_IRI"),
 		AdditionalInfoMultipleInput.DATA_TYPE_VECTOR_POLYGON, fieldTypes, fieldNames);
 
+	openCSV(fieldNames, "/tmp/outCSV.csv");
 
-	IFeatureIterator g_iter = graticule.iterator();
+	g_iter = graticule.iterator();
 	for (int i = 0; g_iter.hasNext(); i++){
 	    //System.out.println(i +"/" +graticule.getShapesCount());
 	    if (cell_map.containsKey(i)){
-		System.out.println("Contains: " + i +"/" +graticule.getShapesCount());
+		//System.out.println("Contains: " + i +"/" +graticule.getShapesCount());
 		IFeature cell = g_iter.next();
 		Geometry geom = cell.getGeometry();
 		Object[] values = cell_map.get(i);
 		values = sumarizeIRI(values);
 		for (int j = 0; j < values.length; j++){
-		    System.out.println(j + ": " + fieldTypes[j] + "  "+ fieldNames[j] + "\t" + values[j]);
+		    //System.out.println(j + ": " + fieldTypes[j] + "  "+ fieldNames[j] + "\t" + values[j]);
 		    try {
 			if (fieldTypes[j].getClass().equals(Double.class)) {
 			    double f = (Double)values[j];
@@ -426,12 +435,14 @@ GeoAlgorithm {
 		}
 		result.addFeature(geom, values);
 		cell_map.remove(i);
+		writeCSV(geom, values);
 	    } else {
 		g_iter.next();
 	    }
 	}
 	//graticule.close();
 	g_iter.close();
+	closeCSV();
 
 	return !m_Task.isCanceled();
     }
@@ -466,7 +477,7 @@ GeoAlgorithm {
 		    values[num] = (Double)values[num] + (Double)values[j];
 		    //Get max cuenca to recalculate IRI_DIL
 		    if (fieldNames[j].contains("cuenca")){
-			System.out.println(fieldNames[j]+ "["+j+"]: " + values[j]);
+			//System.out.println(fieldNames[j]+ "["+j+"]: " + values[j]);
 			double cuenca = (Double)values[j];
 			if (cuenca > max_watershed){
 			    max_watershed = cuenca;
@@ -536,7 +547,7 @@ GeoAlgorithm {
 	for (; i < stop_num; i++){
 	    String col_name = fieldNames[i].substring(3);
 	    values[i] = getValue(col_name, accLayer, iriFeat);
-	    System.out.println(i + ": "+ col_name + "  --  " + values[i]);
+	    //System.out.println(i + ": "+ col_name + "  --  " + values[i]);
 	}
 
 	cellMap.put(cellNum, values);
@@ -587,6 +598,43 @@ GeoAlgorithm {
 	final double _7Q10 = (3.1 * Math.pow(watershed_km2, 0.8736));
 	final double cmax = conc_mez + (432 * ((_7Q10 * (conc_mez - conc_rio)) / he));
 	return cmax;
+    }
+
+    private void openCSV(String[] header, String filepath){
+	try{
+	    // Create file
+	    FileWriter fstream = new FileWriter(filepath);
+	    outCSV = new BufferedWriter(fstream);
+	    outCSV.write("X;Y;");
+	    for (int i = 0; i < (header.length-1); i++) {
+		outCSV.write(header[i]+";");
+	    }
+	    outCSV.write(header[header.length-1]+"\n");
+	}catch (Exception e){//Catch exception if any
+	    System.err.println("Error: " + e.getMessage());
+	}
+    }
+
+    private void writeCSV(Geometry geom, Object[] values){
+	try {
+	    Coordinate coord = geom.getCentroid().getCoordinate();
+	    outCSV.write(coord.x+";"+coord.y+";");
+	    for (int i = 0; i < (values.length-1); i++) {
+		outCSV.write(values[i].toString()+";");
+	    }
+	    outCSV.write(values[values.length-1].toString()+'\n');
+	} catch (IOException e) {
+	    e.printStackTrace();
+	}
+    }
+
+    private void closeCSV(){
+	try {
+	    //Close the output stream
+	    outCSV.close();
+	} catch (IOException e) {
+	    e.printStackTrace();
+	}
     }
 
 
