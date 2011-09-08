@@ -31,7 +31,10 @@ copyXp <- function(arr, colNum){
 	     for (idx in col_n){
 	       #cat("col:", col, "i:", i, "idx: ", idx, "\n")
                if (idx){
-	         xp = arr[i, colXp]	
+	         xp = arr[i, colXp]
+		 if (xp == 0){
+		    xp = "ZERO";
+		 }	
 	         arr[i,num] = xp
 	       }
 	       i = i + 1
@@ -52,10 +55,19 @@ getFirstNoZero <- function(arr, colNum){
 }
 
 ### READ DBF FILE
+
+COLS_TO_PROCESS = 2:12
+
 iri = read.dbf(DBF)
-iri2 = copyXp(iri, 2:12)
-firsts = getFirstNoZero(iri2, 1:12)
+iri2 = copyXp(iri, COLS_TO_PROCESS)
+
+#print(iri2)
+#print("--------------------------------")
+
+COLS_TO_PROCESS = 3:12
+firsts = getFirstNoZero(iri2, COLS_TO_PROCESS)
 aux = c(NAME,firsts)
 
 out = gsub(',',';',toString(aux))
+out = gsub('ZERO','0',toString(out))
 print(out)
